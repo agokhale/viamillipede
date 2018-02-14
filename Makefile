@@ -7,6 +7,12 @@
 #	sh  test.sh
 
 #.include <src.opts.mk>
+# XXX I'm not really suppoesd to DESTDIR but ... ???
+DESTDIR= /usr/local/
+BINDIR= bin
+MK_DEBUG_FILES= no
+SHAREDIR= ""
+
 PROG= viamillipede
 SRCS= plumbing.c tx.c rx.c viamillipede.c
 # This LDADD knob can't possibly be intended to use this way
