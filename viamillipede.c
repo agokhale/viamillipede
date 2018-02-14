@@ -3,7 +3,7 @@
 
 void usage ()  { 
 printf ( "viamillipede scatter gather multiplexed tcp for pipe transport between hosts usage: \n"); 
-printf ( "tranmitter:  vimillipede tx 192.168.0.2 12323  tx 192.168.0.3 12323 threads 3 verbose 3\n"); 
+printf ( "transmitter:  vimillipede tx 192.168.0.2 12323  tx 192.168.0.3 12323 threads 3 verbose 3\n"); 
 printf ( "receiver:  vimillipede rx 12323 3\n"); 
 }
 	
