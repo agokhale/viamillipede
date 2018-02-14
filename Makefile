@@ -9,7 +9,7 @@
 #.include <src.opts.mk>
 # XXX I'm not really suppoesd to DESTDIR but ... ???
 DESTDIR= /usr/local/
-BINDIR= bin
+BINDIR= /bin
 MK_DEBUG_FILES= no
 SHAREDIR= ""
 
