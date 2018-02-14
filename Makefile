@@ -8,8 +8,9 @@
 
 #.include <src.opts.mk>
 # XXX I'm not really suppoesd to DESTDIR but ... ???
-DESTDIR= /usr/local/
-BINDIR= /bin
+#DESTDIR= /usr/local/
+BINDIR= /usr/local/bin
+MANDIR= /usr/local/man/man
 MK_DEBUG_FILES= no
 SHAREDIR= ""
 
