@@ -1,26 +1,6 @@
 #!/bin/sh 
-verb=${1:-4}
-howmuchpain=${2:-5} 
-txhost="kaylee.a.aeria.net"
-txpool="dozer"
-txdataset="payloads"
-txsnapshot="intial"
-rxhost="mal.a.aeria.net"
-rxhost2="192.168.238.1"
-rxhost3="192.168.238.2"
-rxhost4="192.168.238.3"
-rxhost5="192.168.238.4"
-rxhost6="192.168.238.5"
-rxhost7="192.168.238.6"
-rxhost8="192.168.238.8"
-rxhost9="192.168.238.9"
-rxport=12323
-rxhost_graph="tx $rxhost2 $rxport tx $rxhost3 $rxport tx $rxhost4 $rxport \
-	tx $rxhost5 $rxport tx $rxhost6 $rxport tx $rxhost7 $rxport tx $rxhost8 $rxport \
-        tx $rxhost9 $rxport tx $rxhost $rxport "
-txrsh="ssh root@$txhost "
-rxrsh="ssh root@$rxhost "
-
+# #!/bin/sh -x
+which_test=${1:-smoke}
 
 
 dddriver() {
@@ -145,22 +125,22 @@ install_bin () {
 
 smoke() { 
 	payloadstream=$1
-	verb=$2 
-	threads="threads $3"
-	#$rxrsh "/tmp/viamillipede rx $rxport verbose $verb | md5 && echo remote done "  & 
-	$rxrsh "/tmp/viamillipede rx $rxport verbose $verb > /dev/null && echo -n remote done "  & 
-	sleep 0.5
+	remote_command=$2
+	verb=$3 
+	threads="threads $4"
+	smoke_output="invalid_smoke"
+	$rxrsh "/tmp/viamillipede rx $rxport verbose $verb  $remote_command " > /tmp/smoke_output & 
 	sshpid=$!
+	sleep 0.5
 	time_start
 	$txrsh "$payloadstream | /tmp/viamillipede $rxhost_graph verbose $verb $threads "
 	time_stop "smoke-stream$1-verb$2-th$3"
-	rempid=`$rxrsh "ps -auxw | grep -v grep | grep viamillipede" `
-	if [  $rempid ] ; then
-		echo "rx vmpd still running?"
-		exit 4
-	fi
 	wait $sshpid
+	smoke_output=`cat /tmp/smoke_output; rm /tmp/smoke_output`
+	export smoke_output
+	#echo  "smoke_output: $smoke_output"
 }
+
 
 time_start()  {
 	begint=`date +"%s"`
@@ -187,18 +167,72 @@ zsend_dd_shunt () {
 	time_stop zsend_dd_shunt
 }
 
+setup_smoke() {
+	txhost="localhost"
+	rxhost=$txhost
+	rxport=12324
+	rxcommand=" | md5 " 
+	verb=5
+	thread_count=16
+	rxhost_graph=" tx $rxhost $rxport"
+	payload_generator="tar cf - /usr/share/doc"
+	payload_generator="dd if=/dev/zero bs=64k count=10k" 
+	payload_generator="/bin/dd if=/dev/zero bs=64k count=10k "
+	badcrypto=" /usr/bin/openssl enc -aes-128-cbc -k bad_pass -S 5A "
+	expected_md5=`$payload_generator | $badcrypto | md5  `
+	txrsh="ssh $txhost "
+	rxrsh="ssh $rxhost "
+	install_bin
+	smoke "$payload_generator | $badcrypto" " $rxcommand " $verb $thread_count
+	#failcase smoke "$payload_generator " " $rxcommand " $verb $thread_count
+	if [ "$expected_md5" = "$smoke_output" ]; then
+		echo pass
+	else
+		echo fail 
+		exit -1
+	fi
+}
 
-#time_start 
-#$txrsh "true"
-#time_stop trvialcommand
-makepayloads
-install_bin 
-zsend_shunt
-zsend_dd_shunt
-ncref
-thread_counts=`jot 16 1`
-for thread_count in $thread_counts 
-do 
-	smoke "zfs send $txpool/$txdataset@initial" 2 $thread_count
-done
-#$cleanpayloadds
+setup_grand() {
+	txhost="kaylee.a.aeria.net"
+	txpool="dozer"
+	txdataset="payloads"
+	txsnapshot="intial"
+	rxhost="mal.a.aeria.net"
+	rxhost2="192.168.238.1"
+	rxhost3="192.168.238.2"
+	rxhost4="192.168.238.3"
+	rxhost5="192.168.238.4"
+	rxhost6="192.168.238.5"
+	rxhost7="192.168.238.6"
+	rxhost8="192.168.238.8"
+	rxhost9="192.168.238.9"
+	rxport=12323
+	rxhost_graph="tx $rxhost2 $rxport tx $rxhost3 $rxport tx $rxhost4 $rxport \
+		tx $rxhost5 $rxport tx $rxhost6 $rxport tx $rxhost7 $rxport tx $rxhost8 $rxport \
+		tx $rxhost9 $rxport tx $rxhost $rxport "
+	time_start 
+	$txrsh "true"
+	time_stop trvialcommand
+	makepayloads
+	install_bin 
+	zsend_shunt
+	zsend_dd_shunt
+	ncref
+	thread_counts=`jot 16 1`
+	setup_common
+	for thread_count in $thread_counts 
+	do 
+		smoke "zfs send $txpool/$txdataset@initial" 2 $thread_count
+	done
+	#$cleanpayloadds
+}
+
+setup_common(){
+	txrsh="ssh root@$txhost "
+	rxrsh="ssh root@$rxhost "
+}
+
+
+setup_$which_test
+
