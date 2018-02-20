@@ -115,12 +115,12 @@ ncref () {
 }
 install_bin () {
 	echo cleaning bins
-	$txrsh "pkill viamillipede"
-	$rxrsh "pkill viamillipede"
-	cat viamillipede | $txrsh " cat -  > /tmp/viamillipede"
-	cat viamillipede | $rxrsh " cat -  > /tmp/viamillipede"
-	$txrsh "chmod 700 /tmp/viamillipede"
-	$rxrsh "chmod 700 /tmp/viamillipede"
+	$txrsh "pkill viamillipede" &
+	$rxrsh "pkill viamillipede" &
+	cat viamillipede | $txrsh " cat -  > /tmp/viamillipede"  
+	cat viamillipede | $rxrsh " cat -  > /tmp/viamillipede" 
+	$txrsh "chmod 700 /tmp/viamillipede" &
+	$rxrsh "chmod 700 /tmp/viamillipede" &
 }
 
 smoke() { 
@@ -134,7 +134,7 @@ smoke() {
 	sleep 0.5
 	time_start
 	$txrsh "$payloadstream | /tmp/viamillipede $rxhost_graph verbose $verb $threads "
-	time_stop "smoke-stream$1-verb$2-th$3"
+	time_stop "smoke payload: $payloadstream verbose: $verb remotecmd: $2  threads: $threads"
 	wait $sshpid
 	smoke_output=`cat /tmp/smoke_output; rm /tmp/smoke_output`
 	export smoke_output
@@ -172,7 +172,7 @@ setup_smoke() {
 	rxhost=$txhost
 	rxport=12324
 	rxcommand=" | md5 " 
-	verb=5
+	verb=6
 	thread_count=16
 	rxhost_graph=" tx $rxhost $rxport"
 	payload_generator="tar cf - /usr/share/doc"
