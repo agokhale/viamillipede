@@ -92,8 +92,8 @@ int tcp_connect ( char * host, int port )  {
 	assert ( ret_sockfd > 0  && "socket fishy"); 
 	retcode = connect ( ret_sockfd, (struct sockaddr*) &(lsockaddr), sizeof (struct sockaddr) ); 
 	checkperror ( "socket connect"); 
-	if ( retcode != 0 ) perror ("connect() errrr:"); 
-	assert ( retcode == 0 && "connect fail "); 
+	if ( retcode != 0 ) perror ("connect() errrr:");  // could be reset by peer.. why?? 
+	assert ( retcode == 0 && "connect fail ");  //XXX this should not be fatal
 	int sockerr; 
 	u_int sockerrsize = sizeof(sockerr); //uhg
 	getsockopt ( ret_sockfd ,  SOL_SOCKET, SO_ERROR, &sockerr, &sockerrsize); 

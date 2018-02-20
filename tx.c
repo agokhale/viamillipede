@@ -138,12 +138,17 @@ void txworker (struct  txworker_s *txworker ) {
 	txworker->sockfd = tcp_connect ( 
 		txworker->txconf_parent->target_ports[txworker->id % target_count].name, 
 		txworker->txconf_parent->target_ports[txworker->id % target_count].port); 
+	// this can flood the remote end trivially on high bw networks resulting in this syndrome and a partially connnected graph
+	/*
+	sonewconn: pcb 0xfffff8014ba261a8: Listen queue overflow: 10 already in queue awaiting acceptance (2 occurrences)
+	pid 4752 (viamillipede), uid 1001: exited on signal 6 (core dumped)
+	*/
 	//can the remote end talk? 
 	//this is lame  but rudimentary q/a session will assert that the tcp stream is able to bear traffic
 	retcode = write (txworker->sockfd, hellophrase, 4); 
-	checkperror ( "write fail"); 
+	checkperror ( "tx: write fail"); 
 	retcode = read (txworker->sockfd, &readback, 2); 
-	checkperror ("read fail"); 
+	checkperror ("tx: read fail"); 
 	assert ( bcmp ( checkphrase, readback, 2 ) == 0 ); 
 	whisper ( 8, "txw:%i online and idling fd:%i\n", txworker->id, txworker->sockfd);
 	//txstatus (txworker->txconf_parent,7); 
@@ -205,6 +210,8 @@ void txlaunchworkers ( struct txconf_s * txconf) {
 		checkperror ("pthread launch"); 
 		assert ( ret == 0 && "pthread launch"); 
 		worker_cursor++;
+		usleep ( 10 * 1000);  
+		// 10ms standoff  to increase the likelyhood that PCBs are available on the rx side
 		}	
 	txstatus ( txconf, 5);
 }
@@ -225,10 +232,10 @@ void txbusyspin ( struct txconf_s* txconf ) {
 	// wait until all legs are pushed; called after ingest is complete
 	// if there are launche/dispatched /pushing workers; hang here
 	int done =0; 
-	int busy_cycles; 
-	char  instate; 
+	int busy_cycles=0; 
+	char  instate='E';  //error uninitialized
 	while (!done) {
-		usleep ( 1000);  // e^n backoff?
+		usleep ( 1000 );  // e^n backoff? 
 		if ( (busy_cycles % 100) == 0 ) txstatus( txconf, 4 ); 
 		busy_cycles++; 
 		int busy_workers = 0; 
@@ -240,7 +247,7 @@ void txbusyspin ( struct txconf_s* txconf ) {
 		} 
 		done = ( busy_workers == 0 ) ; 
 	}
-	whisper ( 4, "\nall workers idled after %i spins\n", busy_cycles); 
+	whisper ( 6, "\ntx: all workers idled after %i spins\n", busy_cycles); 
 }
 struct txconf_s *gtxconf; 
 void wat ( ) {
