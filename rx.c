@@ -91,7 +91,7 @@ void rxworker ( struct rxworker_s * rxworker ) {
 			sequencer_stalls++; 
 			assert ( sequencer_stalls  < ktimeout_chunks && "rx seqencer stalled");
 		}
-		whisper ( 5, "rxw:%i dumping leg:%lu.%lu after %i stalls\n", rxworker->id,  pkt.leg_id, pkt.size, sequencer_stalls); 
+		whisper ( 5, "rxw:%02i sequenced leg:%08lu[%08lu]after %05i stalls\n", rxworker->id,  pkt.leg_id, pkt.size, sequencer_stalls); 
 		remainder = pkt.size; 
 		int writesize=0; 
 		cursor = 0 ; 
@@ -102,13 +102,14 @@ void rxworker ( struct rxworker_s * rxworker ) {
 		}
 		checkperror ("write buffer"); 	
 		//XXX protect with mutex?
-		rxworker->rxconf_parent->next_leg ++ ;
 		readlen = readsize = -111;
 		if ( pkt.opcode == end_of_millipede ) {
 			whisper ( 5, "rxw:%i caught %x done with last frame\n", rxworker->id,  pkt.opcode); 
 			//rxworker->rxconf_parent->done_mbox = 1; //XXX xxx 
 			exit (0); 
-		} else {
+		} 
+#ifdef vmpd_strict
+		else {
 			// the last frame will be empty and have a borken cksum
 			rx_checksum = mix ( grx_saved_checksum + pkt.leg_id, buffer, pkt.size ); 
 			if ( rx_checksum != pkt.checksum ) 
@@ -119,6 +120,8 @@ void rxworker ( struct rxworker_s * rxworker ) {
 			assert ( rx_checksum == pkt.checksum ) ;
 			grx_saved_checksum = rx_checksum; 
 		}
+		rxworker->rxconf_parent->next_leg ++ ; // do this last or race out the cksum code
+#endif //vmpd_strict 
 	}// while !done
 	whisper ( 7, "rxw:%i  done\n", rxworker->id); 
 	

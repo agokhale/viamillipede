@@ -56,8 +56,14 @@ void txingest (struct txconf_s * txconf ) {
 			txconf->workers[worker].pkt.size = readsize;   
 			txconf->workers[worker].pkt.leg_id = ingest_leg_counter; 
 			txconf->workers[worker].pkt.opcode=feed_more; 
-			txconf->workers[worker].pkt.checksum= mix ( saved_checksum + ingest_leg_counter, txconf->workers[worker].buffer, readsize);  //XXX expensive
+#ifdef vmpd_strict
+			//XXX expensive
+			txconf->workers[worker].pkt.checksum = 
+				mix ( saved_checksum + ingest_leg_counter , 
+					txconf->workers[worker].buffer, 
+					readsize);  
 			saved_checksum = txconf->workers[worker].pkt.checksum;
+#endif
 			start_worker ( &(txconf->workers[worker]) );
 			txconf->stream_total_bytes += readsize ; 
 		} else { 
