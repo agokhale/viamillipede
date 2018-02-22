@@ -2,8 +2,9 @@
 #include "util.h"
 #include <sys/socket.h>
 
-// forcefully read utill a bufffer completes or EOF
 ssize_t bufferfill ( int fd, u_char * dest, size_t size ) {
+// forcefully read utill a bufffer completes or EOF
+// XXX replace with kqueue - perhaps
         int remainder=size;
         u_char * dest_cursor = dest;
         ssize_t accumulator=0;
@@ -60,17 +61,17 @@ void stopwatch_start (struct  timespec * t ) {
 }
 int stopwatch_stop ( struct  timespec * t  , int  whisper_channel) {
         //  stop the timer started at t
+	// returns usec resolution diff of time
         struct timespec stoptime;
         assert ( clock_gettime( CLOCK_UPTIME, &stoptime ) == 0 );
         time_t secondsdiff =     stoptime.tv_sec   - t->tv_sec  ;
         long nanoes =            stoptime.tv_nsec  - t->tv_nsec;
-
         if ( nanoes < 0 ) {
                 // borrow billions place nanoseconds to come up true
                 nanoes += 1000000000;
                 secondsdiff --;
         }
-        u_long ret = MIN( ULONG_MAX,  (secondsdiff * 1000000 ) + (nanoes/1000));
+        u_long ret = MIN( ULONG_MAX,  (secondsdiff * 1000000 ) + (nanoes/1000)); //in usec
         if ( whisper_channel > 0 ) { whisper ( whisper_channel, "%li.%03li", secondsdiff, nanoes/1000000); }
         return  ret;
 }
@@ -131,3 +132,11 @@ int tcp_accept(struct sockaddr_in *  sa , int socknum ){
         return (out_sockfd);
 }
 
+
+unsigned long  mix ( unsigned int seed, void * data, unsigned long size ) {
+	unsigned acc = seed; 
+	for ( unsigned long cursor = 0 ; cursor <= size; cursor += sizeof ( unsigned long)  ) {  // XX we miss the tail for unaligned sizes
+		acc += *( unsigned long * ) data + cursor; 
+	}
+	return ( acc ); 		
+}

@@ -41,7 +41,7 @@ void txingest (struct txconf_s * txconf ) {
 	int in_fd = STDIN_FILENO;
 	int foot_cursor =0;
 	int done =0; 
-	u_char taste_buf; 
+	unsigned long saved_checksum = 0xff;
 	int ingest_leg_counter = 0; 
 	txconf->stream_total_bytes=0; 
 	checkperror("nuisancse ingest err");
@@ -56,6 +56,8 @@ void txingest (struct txconf_s * txconf ) {
 			txconf->workers[worker].pkt.size = readsize;   
 			txconf->workers[worker].pkt.leg_id = ingest_leg_counter; 
 			txconf->workers[worker].pkt.opcode=feed_more; 
+			txconf->workers[worker].pkt.checksum= mix ( saved_checksum + ingest_leg_counter, txconf->workers[worker].buffer, readsize);  //XXX expensive
+			saved_checksum = txconf->workers[worker].pkt.checksum;
 			start_worker ( &(txconf->workers[worker]) );
 			txconf->stream_total_bytes += readsize ; 
 		} else { 

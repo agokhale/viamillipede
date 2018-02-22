@@ -1,5 +1,6 @@
 #include "worker.h"
 
+unsigned long grx_saved_checksum = 0xff; 
 void rxworker ( struct rxworker_s * rxworker ) {
 	int done =0; 
 	int readsize;
@@ -25,6 +26,7 @@ void rxworker ( struct rxworker_s * rxworker ) {
 		int cursor = 0;
 		int preamble_cursor=0;
 		int preamble_fuse=0; 
+		unsigned long rx_checksum =0 ;
 		while ( preamble_cursor < sizeof(struct millipacket_s))   {
 			// fill the preamble + millipacket structure whole
 			checkperror ("nuicsance before preamble read");
@@ -104,8 +106,18 @@ void rxworker ( struct rxworker_s * rxworker ) {
 		readlen = readsize = -111;
 		if ( pkt.opcode == end_of_millipede ) {
 			whisper ( 5, "rxw:%i caught %x done with last frame\n", rxworker->id,  pkt.opcode); 
-			//rxworker->rxconf_parent->done_mbox = 1; 
+			//rxworker->rxconf_parent->done_mbox = 1; //XXX xxx 
 			exit (0); 
+		} else {
+			// the last frame will be empty and have a borken cksum
+			rx_checksum = mix ( grx_saved_checksum + pkt.leg_id, buffer, pkt.size ); 
+			if ( rx_checksum != pkt.checksum ) 
+				{ 
+				whisper( 2 , "rx checksum mismatch %lu != %lu", rx_checksum, pkt.checksum); 
+				whisper ( 2, "rxw:%i offending leg:%lu.%lu after %i stalls\n", rxworker->id,  pkt.leg_id, pkt.size, sequencer_stalls); 
+				}
+			assert ( rx_checksum == pkt.checksum ) ;
+			grx_saved_checksum = rx_checksum; 
 		}
 	}// while !done
 	whisper ( 7, "rxw:%i  done\n", rxworker->id); 

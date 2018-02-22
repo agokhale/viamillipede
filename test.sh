@@ -172,7 +172,7 @@ setup_smoke() {
 	rxhost=$txhost
 	rxport=12324
 	rxcommand=" | md5 " 
-	verb=6
+	verb=3
 	thread_count=16
 	rxhost_graph=" tx $rxhost $rxport"
 	payload_generator="tar cf - /usr/share/doc"

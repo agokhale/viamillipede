@@ -18,7 +18,7 @@
 #include <signal.h>
 #include "util.h"
 
-#define kfootsize ( 2048 * 1024 )
+#define kfootsize ( 2048 * 1024 ) // 2M is experimentally nice; however a PMC driven cache/use study  would be great to inform this
 
 struct txconf_s;  // forward decl to permit inception 
 struct rxconf_s;  // forward decl to permit inception 
@@ -29,10 +29,12 @@ struct rxconf_s;  // forward decl to permit inception
 #define end_of_millipede 0xdead  
 // the bearer channel header
 struct millipacket_s { 
-	unsigned long preamble;  // shoudl always be preamble_cannon_ul constant
-	unsigned long leg_id; //  leg_id= ( streampos  % leg_size ) is the main sequencer for the whole session
-	unsigned long size;
-	int	checksum; 
+	unsigned long preamble;	// == preamble_cannon_ul constant,  mostly superstition against getting alien transmissions
+	unsigned long leg_id; 	// leg_id= ( streampos  % leg_size ) is the main sequencer for the whole session
+				// this may result in max transmission size of klegsize * ( unsigned int max )
+				// XXX debug  sequencer rollover condition if this is a problem
+	unsigned long size; 	// <= kfootsize 
+	unsigned long checksum; //  checksum = mix ( leg_id, opcode, sample ( payload) ); 
 	int 	opcode; 
 	
 };
