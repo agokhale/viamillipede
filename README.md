@@ -91,6 +91,17 @@ Viamillipede is client and server program built to improve network pipe transpor
           + varying layer2 attachment ( vlan, aggregation )
           + varying layer3 routes
      + `viamillipede tx foreign-cheap-1g.shore.net 8834 tx foreign-north-10g.shore.net 8834  tx foreign-east-1g.shore.net 8834 `
++ use outboard crypto
+	+ viamillipede does not provide any armoring against insterception or authentication
+	+ use ipsec/vpn and live with the speed
+	+ provide ssh tcp forwarding endpoints
+		+ from the tx host:` ssh -N -L 12323:localhost:12323 tunneluser@rxhost `
+		+ use mutiple port instances to  get parallelism
+	+ use openssl in  stream, take your crypto into your own hands
+		+ ` /usr/bin/openssl enc -aes-128-cbc -k swordfIIIsh -S 5A  `
+		+ choose a cipher that's binary transparent  
+		+ appropriate  paranoia vs. performance up to you
+		+ enigma, rot39, morse?
 
 
 

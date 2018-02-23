@@ -1,7 +1,7 @@
 #ifndef utilh
 #define utilh
 extern int gverbose;
-ssize_t bufferfill ( int fd, u_char * dest, size_t size );
+ssize_t bufferfill ( int fd,  u_char *  __restrict dest, size_t size );
 void stopwatch_start (struct  timespec * t ); 
 int stopwatch_stop ( struct  timespec * t  , int  whisper_channel);
 unsigned long  mix ( unsigned int seed, void * data, unsigned long size );

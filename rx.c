@@ -77,20 +77,20 @@ void rxworker ( struct rxworker_s * rxworker ) {
 		}
 		whisper( 8, "\nrxw: %i leg:%lu buffer filled to :%i\n", rxworker->id, pkt.leg_id,  cursor) ; 
 		checkperror ("read leg"); 	
-		//assert ( errno != 0 && "read leg"); 
-		// XXX crc32 check
 		//block until the sequencer is ready to push this 
 		///XXXX  terrible sequencer
 		// bufferblock == next expected bufferblock
-		// possibly voilates some cocurrency noise
 		int sequencer_stalls =0 ; 
 		while ( pkt.leg_id !=  rxworker->rxconf_parent->next_leg ) {
+			pthread_mutex_unlock( &rxworker->rxconf_parent->rxmutex );
 #define ktimeout ( 1000 * 3000 ) 
 #define ktimeout_chunks ( 10000  )
 			usleep ( ktimeout / ktimeout_chunks ); 
 			sequencer_stalls++; 
 			assert ( sequencer_stalls  < ktimeout_chunks && "rx seqencer stalled");
+			pthread_mutex_lock( &rxworker->rxconf_parent->rxmutex ); // do nothing but compare seqeuncer under lock
 		}
+		pthread_mutex_unlock( &rxworker->rxconf_parent->rxmutex );
 		whisper ( 5, "rxw:%02i sequenced leg:%08lu[%08lu]after %05i stalls\n", rxworker->id,  pkt.leg_id, pkt.size, sequencer_stalls); 
 		remainder = pkt.size; 
 		int writesize=0; 
@@ -101,7 +101,6 @@ void rxworker ( struct rxworker_s * rxworker ) {
 			remainder -= writesize ; 
 		}
 		checkperror ("write buffer"); 	
-		//XXX protect with mutex?
 		readlen = readsize = -111;
 		if ( pkt.opcode == end_of_millipede ) {
 			whisper ( 5, "rxw:%i caught %x done with last frame\n", rxworker->id,  pkt.opcode); 
@@ -120,10 +119,12 @@ void rxworker ( struct rxworker_s * rxworker ) {
 			assert ( rx_checksum == pkt.checksum ) ;
 			grx_saved_checksum = rx_checksum; 
 		}
-		rxworker->rxconf_parent->next_leg ++ ; // do this last or race out the cksum code
 #endif //vmpd_strict 
+		pthread_mutex_lock( &rxworker->rxconf_parent->rxmutex );
+		rxworker->rxconf_parent->next_leg ++ ; // do this last or race out the cksum code
+		pthread_mutex_unlock( &rxworker->rxconf_parent->rxmutex );
 	}// while !done
-	whisper ( 7, "rxw:%i  done\n", rxworker->id); 
+	whisper ( 7, "rxw:%i  done\n", rxworker->id);  // XX unreachable?
 	
 }
 
@@ -154,6 +155,7 @@ void rxlaunchworkers ( struct rxconf_s * rxconf ) {
 	
 }
 void rx (struct rxconf_s* rxconf) {
+	pthread_mutex_init ( &(rxconf->rxmutex), NULL ); 
 	rxlaunchworkers( rxconf); 
 }
 

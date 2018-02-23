@@ -2,7 +2,7 @@
 #include "util.h"
 #include <sys/socket.h>
 
-ssize_t bufferfill ( int fd, u_char * dest, size_t size ) {
+ssize_t bufferfill ( int fd, u_char * __restrict dest, size_t size ) {
 // forcefully read utill a bufffer completes or EOF
 // XXX replace with kqueue - perhaps
         int remainder=size;
