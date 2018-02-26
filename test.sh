@@ -131,9 +131,9 @@ smoke() {
 	smoke_output="invalid_smoke"
 	$rxrsh "/tmp/viamillipede rx $rxport verbose $verb  $remote_command " > /tmp/smoke_output & 
 	sshpid=$!
-	sleep 0.5
+	sleep 1
 	time_start
-	$txrsh "$payloadstream | /tmp/viamillipede $rxhost_graph verbose $verb $threads "
+	$txrsh "$payloadstream | /tmp/viamillipede  $chaos $rxhost_graph verbose $verb $threads "
 	time_stop "smoke payload: $payloadstream verbose: $verb remotecmd: $2  threads: $threads"
 	wait $sshpid
 	smoke_output=`cat /tmp/smoke_output; rm /tmp/smoke_output`
@@ -172,12 +172,13 @@ setup_smoke() {
 	rxhost=$txhost
 	rxport=12324
 	rxcommand=" | md5 " 
-	verb=3
+	verb=99
 	thread_count=16
 	rxhost_graph=" tx $rxhost $rxport"
 	payload_generator="tar cf - /usr/share/doc"
 	payload_generator="dd if=/dev/zero bs=64k count=10k" 
 	payload_generator="/bin/dd if=/dev/zero bs=64k count=10k "
+	chaos=" chaos 17050"
 	badcrypto=" /usr/bin/openssl enc -aes-128-cbc -k bad_pass -S 5A "
 	expected_md5=`$payload_generator | $badcrypto | md5  `
 	txrsh="ssh $txhost "

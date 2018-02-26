@@ -19,6 +19,7 @@
 #include "util.h"
 
 #define kfootsize ( 2048 * 1024 ) // 2M is experimentally nice; however a PMC driven cache/use study  would be great to inform this
+#define kthreadmax 16
 
 struct txconf_s;  // forward decl to permit inception 
 struct rxconf_s;  // forward decl to permit inception 
@@ -60,9 +61,10 @@ struct txconf_s {
 	int worker_count;
 	struct timespec ticker; 
 	u_long stream_total_bytes; 
-	struct txworker_s workers[16];	//XXX make dynamic??? 
+	struct txworker_s workers[kthreadmax];	//XXX make dynamic??? 
 	int target_port_count; 	
-	struct target_port_s target_ports[16]; 
+	int target_port_cursor; 	
+	struct target_port_s target_ports[kthreadmax]; 
 	pthread_mutex_t mutex;
 };
 
@@ -79,9 +81,10 @@ struct rxworker_s {
 struct rxconf_s {
 	int workercount; 
 	struct sockaddr_in sa;  // reusable bound sa for later accepts
+	pthread_mutex_t  sa_mutex;  // 
 	int socknum ;  // reusable bound socket number  later accepts
 	unsigned short port; 
-	struct rxworker_s workers[17]; 
+	struct rxworker_s workers[kthreadmax]; 
 	int next_leg ;  // main sequencer to monotonically order legs to stdout
 	int done_mbox; 
 	pthread_mutex_t rxmutex;

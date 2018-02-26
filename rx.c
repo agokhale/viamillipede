@@ -1,6 +1,7 @@
 #include "worker.h"
 
 unsigned long grx_saved_checksum = 0xff; 
+
 void rxworker ( struct rxworker_s * rxworker ) {
 	int done =0; 
 	int readsize;
@@ -9,14 +10,23 @@ void rxworker ( struct rxworker_s * rxworker ) {
 	char  okphrase[] ="ok";
 	char  checkphrase[] ="yoes";
 	buffer = calloc ( 1 , (size_t)kfootsize );
-	whisper ( 8, "   rx worker  connected id%i fd:%i\n", rxworker->id, rxworker->sockfd); 
+	assert ( rxworker->id < kthreadmax ); 
+	do {
+		pthread_mutex_lock  ( &rxworker->rxconf_parent->sa_mutex); 
+		whisper ( 7, "rxw:%i accepting and locked\n", rxworker->id); 
+		rxworker->sockfd = tcp_accept ( &(rxworker->rxconf_parent->sa), rxworker->rxconf_parent->socknum); 
+		whisper ( 5, "rxw:%i accepted fd:%i \n", rxworker->id, rxworker->sockfd); 
+		pthread_mutex_unlock( &rxworker->rxconf_parent->sa_mutex ); 
+	} while (0);
+	whisper ( 16, "rxw:%i fd:%i expect yoes\n", rxworker->id, rxworker->sockfd); 
 	read ( rxworker->sockfd , buffer, (size_t)  4 ); //XXX this is vulnerable to slow starts
-	if ( bcmp ( buffer, checkphrase, 4 ) == 0 ) 
-		{ whisper ( 8, "checkphrase ok\n"); } 
+	if ( bcmp ( buffer, checkphrase, 4 ) == 0 )  // XXX use programmamble checkphrase
+		{ whisper ( 13, "checkphrase ok\n"); } 
 	else 
-		{ assert (-1 && "checkphrase failure "); }	
+		{ assert ( -1 && "checkphrase failure "); }	
 
 	checkperror ("checkphrase  nuiscance ");
+	whisper ( 18, "rxw:%i send ok\n", rxworker->id ); 
 	assert ( write (rxworker->sockfd, okphrase, (size_t)  2 ) && "okwritefail");
 	checkperror ( "signaturewrite "); 
 	// /usr/src/contrib/netcat has a nice pipe input routine XXX perhaps lift it
@@ -30,8 +40,8 @@ void rxworker ( struct rxworker_s * rxworker ) {
 		while ( preamble_cursor < sizeof(struct millipacket_s))   {
 			// fill the preamble + millipacket structure whole
 			checkperror ("nuicsance before preamble read");
-			whisper ( ((errno == 0)?19:3) ,"rxw:%i prepreamble and millipacket: len %i errno:%i cursor:%i\n", rxworker->id, readlen,errno, preamble_cursor); 
-			//XX regrettable pointer cast  other wise we get sizeof(pkt) * cursor
+			whisper ( ((errno == 0)?19:3) ,"rxw:%i prepreamble and millipacket:  errno:%i cursor:%i\n", rxworker->id, errno, preamble_cursor); 
+			//XX regrettable pointer cast + arithmatic  otherwise we get sizeof(pkt) * cursor
 			readlen = read ( rxworker->sockfd , ((u_char*)&pkt)+preamble_cursor, ( sizeof(struct millipacket_s) - preamble_cursor )); 
 			checkperror ("preamble read");
 			whisper ( ((errno == 0)?19:3) ,"rxw:%i preamble and millipacket: len %i errno:%i cursor:%i\n", rxworker->id, readlen,errno, preamble_cursor); 
@@ -62,13 +72,18 @@ void rxworker ( struct rxworker_s * rxworker ) {
 
 		while ( remainder && !done  ) {
 			readsize = read( rxworker->sockfd, buffer+cursor, MIN(remainder, MAXBSIZE )); 
-			assert( readsize > 0 );  //XXX 
+			checkperror ( "rx: read failure"); 
+			if ( errno != 0   || readsize == 0  ) {
+				whisper (2 , "rxw: retired due to read errorno:%i/n  " errno); // XXX reset this worker?? 
+				//pthread_exit (0); 
+			} 
+			assert( readsize > 0 );  //XXX  is this our only clue that the socket died?
 			cursor += readsize; 
 			assert( cursor <= kfootsize ); 
 			remainder -= readsize ; 
 			assert (remainder >=0);
 			if (readsize == 0) { //XXXXXXXX 
-				whisper ( 2, "0 byte read ;giving up. are we done?" );  // XXX this should not be the end
+				whisper ( 2, "rx: 0 byte read ;giving up. are we done?" );  // XXX this should not be the end
 				done = 1; 	
 				break;
 			}
@@ -104,8 +119,8 @@ void rxworker ( struct rxworker_s * rxworker ) {
 		readlen = readsize = -111;
 		if ( pkt.opcode == end_of_millipede ) {
 			whisper ( 5, "rxw:%i caught %x done with last frame\n", rxworker->id,  pkt.opcode); 
-			//rxworker->rxconf_parent->done_mbox = 1; //XXX xxx 
-			exit (0); 
+			rxworker->rxconf_parent->done_mbox = 1; //XXX xxx 
+			//exit (0); 
 		} 
 #ifdef vmpd_strict
 		else {
@@ -137,10 +152,7 @@ void rxlaunchworkers ( struct rxconf_s * rxconf ) {
 	assert (tcp_recieve_prep(&(rxconf->sa), &(rxconf->socknum),  rxconf->port ) == 0  && "prep");
 	do  {
 		rxconf->workers[worker_cursor].id = worker_cursor; 
-		rxconf->workers[worker_cursor].rxconf_parent= rxconf; 
-		whisper ( 8, "rxworker %i stalled ", worker_cursor); 
-		rxconf->workers[worker_cursor].sockfd = tcp_accept ( &(rxconf->sa), rxconf->socknum); 
-		whisper ( 5, "rxw:%i connected fd:%i\n", worker_cursor, rxconf->workers[worker_cursor].sockfd); 
+		rxconf->workers[worker_cursor].rxconf_parent = rxconf; 
 		// all the bunnies made to hassenfeffer
 		retcode = pthread_create ( 
 			&rxconf->workers[worker_cursor].thread, 
@@ -148,14 +160,25 @@ void rxlaunchworkers ( struct rxconf_s * rxconf ) {
 			(void *(* _Nonnull)(void *))&rxworker,
                         &(rxconf->workers[worker_cursor])
 		); 
+		whisper ( 18, "rxw:%i threadlaunched\n", worker_cursor); 
 		checkperror ( "rxpthreadlaunch");  assert ( retcode == 0 && "pthreadlaunch");
 		done = rxconf->done_mbox; 
 		worker_cursor++; 
-	} while (! done ); 
+	} while ( worker_cursor < (kthreadmax ) ); 
+	//} while (! done ); 
 	
 }
 void rx (struct rxconf_s* rxconf) {
-	pthread_mutex_init ( &(rxconf->rxmutex), NULL ); 
+	pthread_mutex_init ( &(rxconf->sa_mutex), NULL ); 
+	pthread_mutex_init ( &(rxconf->rxmutex ), NULL ); 
+	rxconf->done_mbox = 0; 
 	rxlaunchworkers( rxconf); 
+	while ( ! rxconf->done_mbox ) {
+		pthread_mutex_unlock ( &(rxconf->rxmutex) ); 
+		usleep ( 10000); 
+		//XXX  join or  hoist out the lame pthread_exits(); 
+		pthread_mutex_lock ( &(rxconf->rxmutex) ); 
+	}
+	whisper ( 4,"rx: done\n");
 }
 

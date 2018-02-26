@@ -4,10 +4,14 @@
 void usage ()  { 
 printf ( "viamillipede scatter gather multiplexed tcp for pipe transport between hosts usage: \n"); 
 printf ( "transmitter:  vimillipede tx 192.168.0.2 12323  tx 192.168.0.3 12323 threads 3 verbose 3\n"); 
-printf ( "receiver:  vimillipede rx 12323 3\n"); 
+printf ( "receiver:  vimillipede rx 12323 \n"); 
+printf ( "add repeatable  failures:  vimillipede rx 12323  chaos 180002 \n"); 
 }
 	
 int gverbose = 0; 
+unsigned long gchaos=0; 
+unsigned long gchaoscounter=0; 
+
 
 int main ( int argc, char ** argv ) {
 
@@ -20,6 +24,7 @@ struct rxconf_s rxconf;
 ( argc > 1) ? : usage (); 
 txconf.worker_count = 16;
 txconf.target_port_count=0; 
+txconf.target_port_cursor=0; 
 while ( arg_cursor  < argc  ) {
 	//printf ( "  arg: %d, %s\n", arg_cursor , argv[arg_cursor]);
 	if ( strcmp (argv[arg_cursor], "rx" ) == 0 ) {
@@ -57,7 +62,13 @@ while ( arg_cursor  < argc  ) {
 		/// XXXX NDEBUG will break
 		assert ( ++ arg_cursor < argc  && "verbose  needs <level ( 0 - 19) > argument");
 		gverbose  = atoi ( argv[arg_cursor]);
-		whisper ( 11, "verbose set to %i", gverbose ); 	
+		whisper ( 5, "verbose set to %i\n", gverbose ); 	
+	}
+	if ( strcmp ( argv[arg_cursor] , "chaos" )  == 0 ) {
+		assert ( ++ arg_cursor < argc  && "chaos  needs  ( 0 - max-ulong) ");
+		gchaos = atoi ( argv[arg_cursor]);
+		gchaoscounter=gchaos;
+		whisper ( 11, "chaos set to %lu", gchaos ); 	
 	}
 	arg_cursor ++;
 	}

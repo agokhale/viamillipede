@@ -1,6 +1,18 @@
 #include "worker.h"
 #include "util.h"
 #include <sys/socket.h>
+extern unsigned long gchaos;
+extern unsigned long gchaoscounter;
+
+int chaos_fail() {
+	// give up sometimes
+	if (( gchaoscounter-- == 1) && gchaos )    {
+		gchaoscounter = gchaos; 
+		whisper (1, "chaos inserted"); 
+		return ( 1 ); 
+	}
+	return ( 0 ); 
+}
 
 ssize_t bufferfill ( int fd, u_char * __restrict dest, size_t size ) {
 // forcefully read utill a bufffer completes or EOF
@@ -125,9 +137,9 @@ int  tcp_recieve_prep (struct sockaddr_in * sa, int * socknum,  int inport) {
 int tcp_accept(struct sockaddr_in *  sa , int socknum ){  
         int out_sockfd;
         socklen_t socklen = sizeof (struct  sockaddr_in ) ;
-        whisper (17, "accept sockid: %i\n",socknum);
+        whisper (17, "   accept sockid: %i\n",socknum);
         out_sockfd = accept (socknum,(struct sockaddr *)sa,&socklen);
-        whisper (10, "socket %i accepted to fd:%i \n" , socknum,out_sockfd);
+        whisper (13, "   socket %i accepted to fd:%i \n" , socknum,out_sockfd);
 	checkperror  ("acceptor"); 
         return (out_sockfd);
 }

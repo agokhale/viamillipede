@@ -15,6 +15,7 @@ int dispatch_idle_worker ( struct txconf_s * txconf ) {
 			} else {
 			}
 		}
+		assert ( retcode  < kthreadmax );
 		pthread_mutex_unlock (&(txconf->mutex));
 		if (retcode <  0 ) {
 			//txstatus ( txconf , 19); 
@@ -24,10 +25,12 @@ int dispatch_idle_worker ( struct txconf_s * txconf ) {
 			usleep( sleep_thief);
 		}
 	}
+	assert ( retcode  < kthreadmax );
 return (retcode); 
 }
 
 void start_worker ( struct txworker_s * txworker ) {
+	assert ( txworker->id < kthreadmax); 
 	pthread_mutex_lock (&(txworker->txconf_parent->mutex));
 	txworker->state='d'; 	
 	pthread_mutex_unlock (&(txworker->txconf_parent->mutex));
@@ -85,8 +88,9 @@ void txingest (struct txconf_s * txconf ) {
 }
 
 
-void txpush ( struct txworker_s *txworker ) {
+int txpush ( struct txworker_s *txworker ) {
 	//push this buffer out the socket
+	int retcode = 1;
 	int writelen =-1; 
 	int cursor=0 ;
 	/*
@@ -108,26 +112,47 @@ void txpush ( struct txworker_s *txworker ) {
 	write (txworker->sockfd , &txworker->pkt, sizeof(struct millipacket_s)); 
 	txworker->writeremainder = txworker->pkt.size;
 	assert ( txworker->writeremainder <= kfootsize ); 
-	while (  txworker->writeremainder  ) {
+	while (  txworker->writeremainder  && retcode ) {
 		int minedsize = MIN (MAXBSIZE,txworker->writeremainder);
 		txworker->state='P'; // 'P'ush
+		if ( chaos_fail () ) {
+			close (txworker->sockfd);  // things fail sometimes
+		}
 		writelen = write(txworker->sockfd , ((txworker->buffer)+cursor) , minedsize ) ;
+		if ( errno != 0 ) { retcode = 0 ;}; 
+		checkperror (" write to socket" ); 
 		txworker->state='p'; // 'p'ush complete
 		txworker->writeremainder -= writelen; 
 		//assert ( txworker->writeremainder <= kfootsize ); 
 		cursor += writelen; 
 		//whisper (10, "txw:%i push leg:%lu.(+%i -%i)  ",txworker->id,txworker->pkt.leg_id,writelen,txworker->writeremainder); 
 	}
-	assert ( txworker->writeremainder == 0 );
 	checkperror( "writesocket"); 
 	//assert ( writelen );
 	pthread_mutex_lock (&(txworker->txconf_parent->mutex));
-	txworker->state='i'; 
+	if ( retcode == 1)   {
+		assert ( txworker->writeremainder == 0 );
+		txworker->state='i';  // idle ok
+	} else  {
+		txworker->state='x';  // dead  do not transmit more
+	}
 	pthread_mutex_unlock (&(txworker->txconf_parent->mutex));
 	txworker->pkt.size=0; 
 	//whisper ( 6 , "txw:%i  leg:%lu idled \n" , txworker->id, txworker->pkt.leg_id); 
 	//txworker->pkt.leg_id=0; 
 	//pthread_mutex_unlock( &(txworker->mutex)); 
+	return retcode; 
+}
+int tx_tcp_connect_next ( struct txconf_s *  txconf  ) {
+	// pick a port/host from the list, cycleing through  them 
+	txconf->target_port_cursor ++;
+	txconf->target_port_cursor %= txconf->target_port_count ;
+	assert ( txconf->target_port_cursor < txconf->target_port_count); 
+	return ( tcp_connect ( 
+		txconf->target_ports[ txconf->target_port_cursor].name, 
+		txconf->target_ports[ txconf->target_port_cursor].port
+		) 
+	); 
 }
 void txworker (struct  txworker_s *txworker ) {
 	int done =0; 
@@ -141,11 +166,12 @@ void txworker (struct  txworker_s *txworker ) {
 	pthread_mutex_init ( &(txworker->mutex)	, NULL ) ; 
 	pthread_mutex_lock ( &(txworker->mutex));
 	txworker->state = 'c'; //connecting
-	int target_count = txworker->txconf_parent->target_port_count;
-	assert ( target_count > 0 ); 
+	/*
 	txworker->sockfd = tcp_connect ( 
 		txworker->txconf_parent->target_ports[txworker->id % target_count].name, 
 		txworker->txconf_parent->target_ports[txworker->id % target_count].port); 
+	*/
+	txworker->sockfd = tx_tcp_connect_next ( txworker->txconf_parent ); 
 	// this can flood the remote end trivially on high bw networks resulting in this syndrome and a partially connnected graph
 	/*
 	sonewconn: pcb 0xfffff8014ba261a8: Listen queue overflow: 10 already in queue awaiting acceptance (2 occurrences)
@@ -153,10 +179,15 @@ void txworker (struct  txworker_s *txworker ) {
 	*/
 	//can the remote end talk? 
 	//this is lame  but rudimentary q/a session will assert that the tcp stream is able to bear traffic
+	whisper ( 18, "txw:%i send yoes\n", txworker->id);
 	retcode = write (txworker->sockfd, hellophrase, 4); 
 	checkperror ( "tx: write fail"); 
+	whisper ( 18, "txw:%i expect ok \n", txworker->id);
 	retcode = read (txworker->sockfd, &readback, 2); 
 	checkperror ("tx: read fail"); 
+	if  ( bcmp ( checkphrase, readback, 2 ) != 0 )  {
+		whisper ( 5, "txw: %i checkphrase failure readlen:%i",  txworker->id, retcode ); 
+	}
 	assert ( bcmp ( checkphrase, readback, 2 ) == 0 ); 
 	whisper ( 8, "txw:%i online and idling fd:%i\n", txworker->id, txworker->sockfd);
 	//txstatus (txworker->txconf_parent,7); 
@@ -172,8 +203,25 @@ void txworker (struct  txworker_s *txworker ) {
 		local_state = txworker->state; 
 		pthread_mutex_unlock ( &(txworker->txconf_parent->mutex));
 		switch (local_state) {
+			/* valid states:
+				E: uninitialized
+				a: premable
+				c: connected
+				d: loaded; => push
+				Pp: pushing
+				i: idle but connected
+				x: disconnected , still bearing a buffer .. can't bail yet reconnect  => push
+				n: not yet connected,  new no buffer ??? connect => idle
+				
+			*/
 			case 'i': break; //idle
-			case 'd': txpush ( txworker ); sleep_thief=0; break; 
+			case 'd': 
+				 if ( txpush ( txworker ) == 0) {
+					// retry  this
+					whisper ( 2, "txw: %i failed, unconnected , will retry leg %lu ", txworker->id , txworker->pkt.leg_id); 
+				} 
+				sleep_thief=0; 
+				break; 
 			default: assert( -1 && "bad zoot");
 			}
 		state_spin ++; 
@@ -191,16 +239,12 @@ void txworker (struct  txworker_s *txworker ) {
 void txlaunchworkers ( struct txconf_s * txconf) {
 	int worker_cursor = 0;
 	int ret;	
-
-	for ( int i=0; i < 16 ; i++) {
-		txconf->workers[i].state = '0'; // unitialized
-		txconf->workers[i].txconf_parent = txconf; // allow inpection/inception
-		txconf->workers[i].pkt.leg_id = 0; // 
-		txconf->workers[i].pkt.size = -66; // 
-		txconf->workers[i].sockfd = -66; // 
-	}
-
 	while ( worker_cursor < txconf->worker_count )  {
+		txconf->workers[worker_cursor].state = '0'; // unitialized
+		txconf->workers[worker_cursor].txconf_parent = txconf; // allow inpection/inception
+		txconf->workers[worker_cursor].pkt.leg_id = 0; // 
+		txconf->workers[worker_cursor].pkt.size = -66; // 
+		txconf->workers[worker_cursor].sockfd = -66; // 
 		whisper( 16, "txw:%i launching ", worker_cursor); 
 		txconf->workers[worker_cursor].state = 'L';
 		txconf->workers[worker_cursor].id = worker_cursor; 
