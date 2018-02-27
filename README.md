@@ -37,7 +37,7 @@ Viamillipede is client and server program built to improve network pipe transpor
 + Provide:
      + Sufficent buffering for throughput.
      + Runtime SIGINFO inspection of traffic flow.`( parallelism, worker allocation, total throughput )`
-     + Resilience against dropped TCP connections.`(*)`
+     + Resilience against dropped TCP connections.
 + Increase traffic throughput by:
      + Using parallel connections that each vie for survival against scaling window collapse.
      + Using multiple destination addresses with LACP/LAGG or separate Layer 2 adressing.
@@ -57,11 +57,10 @@ Viamillipede is client and server program built to improve network pipe transpor
 	  + provide proxy trasport for other bulk movers: rsync, ssh OpenVPN
 	  + error feedback path
 	  + just run two tx/rx pairs?
-+ Error resiliance `(*)`
-     + dead link bypass ` (*)`
++ Error resiliance
      + very long lived TCP sessions are delicate things;
      + Your NOC wants to do maintenance and you must have a week of pipeline to push
-     + restart broken legs on alternate connections automatically `(*)`
+     + restart broken legs on alternate connections automatically
      + self tuning worker count, side chain, link choices and buffer sizes, Genetic optimization topic?
      + checksums
 
@@ -78,6 +77,8 @@ Viamillipede is client and server program built to improve network pipe transpor
 	` viamillipede rx 8834   verbose 5 `
 + control worker thread count (only on transmitter) with threads <1-16>
 	` viamillipede tx foreign.shore.net 8834 threads 16 `
++ calculate (only on transmitter) with threads <0-1>
+	` viamillipede tx foreign.shore.net 8834 checksum `
 + use with zfs send/recv
      + Configure transmitter with  tx <receiver_host> <portnum>  and provide stdin from zfs send	
      + ` zfs send dozer/visage | viamillipede tx foriegn.shore.net 8834  `
@@ -87,43 +88,24 @@ Viamillipede is client and server program built to improve network pipe transpor
 + explicitly distribute load to reciever with multiple ip addresses, preferring the first ones used
      + Use the cheap link, saturate it, then fill the fast (north) transport and then use the last resort link (east) if there is still source and sync throughput available.
      + The destination machine has three interfaces and may have:
-          + varying layer1 media ( ether, serial, Infiniband , 1488, Carrier Pidgeon, Bugs)
+          + varying layer1 media ( ether, serial, Infiniband , 1488, Carrier Pidgeon, Bugs, ntb)
           + varying layer2 attachment ( vlan, aggregation )
           + varying layer3 routes
      + `viamillipede tx foreign-cheap-1g.shore.net 8834 tx foreign-north-10g.shore.net 8834  tx foreign-east-1g.shore.net 8834 `
++ add error via chaos
+     + periodically close sockets to simulate real work network trouble  and tickle recovery code
+     + deterministic for how many operations to allow before a failure
+     + `viamillipede tx localhost 12334 chaos 1731`
 + use outboard crypto
-	+ viamillipede does not provide any armoring against insterception or authentication
+	+ viamillipede does not provide any armoring against interception or authentication
 	+ use ipsec/vpn and live with the speed
 	+ provide ssh tcp forwarding endpoints
 		+ from the tx host:` ssh -N -L 12323:localhost:12323 tunneluser@rxhost `
 		+ use mutiple port instances to  get parallelism
+		* use a peers tcp encapuslation tunnel to offload crypto
 	+ use openssl in  stream, take your crypto into your own hands
 		+ ` /usr/bin/openssl enc -aes-128-cbc -k swordfIIIsh -S 5A  `
 		+ choose a cipher that's binary transparent  
 		+ appropriate  paranoia vs. performance up to you
 		+ enigma, rot39, morse?
 
-
-
-```
-TOP:
-	scatter gather transport via multiple workers
-	feet  are the work blocks
-	start workers
-	worker states
-		idle
-		working
-	the window is the feet in flight
-		window:
-			foot (footid)
-			stream start =  footid * footsize
-			stream end =  (footid + 1) * footsize
-			window [firstfoot, lastfoot]  ... heap? sorted for min foot out?
-
-	sequence recieved feet to receate stream in order
-	supervise the results relaibly.
-	retrnsmit failed feet
-	maximize throughput vs window vs latency product
-
-	Retry broken transport works
-```

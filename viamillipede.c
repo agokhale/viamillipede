@@ -11,6 +11,7 @@ printf ( "add repeatable  failures:  vimillipede rx 12323  chaos 180002 \n");
 int gverbose = 0; 
 unsigned long gchaos=0; 
 unsigned long gchaoscounter=0; 
+int gchecksums =0; 
 
 
 int main ( int argc, char ** argv ) {
@@ -63,6 +64,11 @@ while ( arg_cursor  < argc  ) {
 		assert ( ++ arg_cursor < argc  && "verbose  needs <level ( 0 - 19) > argument");
 		gverbose  = atoi ( argv[arg_cursor]);
 		whisper ( 5, "verbose set to %i\n", gverbose ); 	
+	}
+	if ( strcmp ( argv[arg_cursor] , "checksums" )  == 0 ) {
+		assert ( ++ arg_cursor < argc  && "checksums  needs  ( 0 - 1) ");
+		gchecksums = atoi ( argv[arg_cursor]);
+		whisper ( 11, "checksum set to %lu", gchaos ); 	
 	}
 	if ( strcmp ( argv[arg_cursor] , "chaos" )  == 0 ) {
 		assert ( ++ arg_cursor < argc  && "chaos  needs  ( 0 - max-ulong) ");

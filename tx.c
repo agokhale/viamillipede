@@ -1,4 +1,6 @@
 #include "worker.h"
+extern int gchecksums;
+
 
 int dispatch_idle_worker ( struct txconf_s * txconf ) {
 	int retcode =-1 ; 
@@ -59,14 +61,16 @@ void txingest (struct txconf_s * txconf ) {
 			txconf->workers[worker].pkt.size = readsize;   
 			txconf->workers[worker].pkt.leg_id = ingest_leg_counter; 
 			txconf->workers[worker].pkt.opcode=feed_more; 
-#ifdef vmpd_strict
-			//expensive this code should only be used for developmend
-			txconf->workers[worker].pkt.checksum = 
-				mix ( saved_checksum + ingest_leg_counter , 
-					txconf->workers[worker].buffer, 
-					readsize);  
-			saved_checksum = txconf->workers[worker].pkt.checksum;
-#endif
+			if ( gchecksums ) {
+				//expensive this code should only be used for developmend
+				txconf->workers[worker].pkt.checksum = 
+					mix ( saved_checksum + ingest_leg_counter , 
+						txconf->workers[worker].buffer, 
+						readsize);  
+				saved_checksum = txconf->workers[worker].pkt.checksum;
+			} else {
+				txconf->workers[worker].pkt.checksum = 0; 
+			}
 			start_worker ( &(txconf->workers[worker]) );
 			txconf->stream_total_bytes += readsize ; 
 		} else { 
@@ -130,6 +134,7 @@ int tx_tcp_connect_next ( struct txconf_s *  txconf  ) {
 	txconf->target_port_cursor ++;
 	txconf->target_port_cursor %= txconf->target_port_count ;
 	assert ( txconf->target_port_cursor < txconf->target_port_count); 
+	whisper ( 2, "connecting %s %d", txconf->target_ports[ txconf->target_port_cursor].name , txconf->target_ports[ txconf->target_port_cursor].port ); 
 	return ( tcp_connect ( 
 		txconf->target_ports[ txconf->target_port_cursor].name, 
 		txconf->target_ports[ txconf->target_port_cursor].port
@@ -179,6 +184,7 @@ void txworker (struct  txworker_s *txworker ) {
 	int sleep_thief =0; 
 	pthread_mutex_init ( &(txworker->mutex)	, NULL ) ; 
 	retcode = tx_start_net( txworker ) ; 
+	assert (retcode > 0 ); 
 	whisper ( 11, "txw:%i idling fd:%i\n", txworker->id, txworker->sockfd);
 	pthread_mutex_lock ( &(txworker->mutex));
 	txworker->state = 'i'; //idle
@@ -334,5 +340,5 @@ void tx (struct txconf_s * txconf) {
 	whisper ( 2, "all complete for %lu(bytes) in ",txconf->stream_total_bytes); 
 	u_long usecbusy = stopwatch_stop( &(txconf->ticker),2 );
 	//bytes per usec - thats interesting   ~== to mbps
-	whisper (1, " %8.4f mbps\n" , ( txconf->stream_total_bytes  / ( 1.0 * usecbusy  ))    );
+	whisper (1, " %8.4f Mbps\n" , ( txconf->stream_total_bytes  / ( 1.0 * usecbusy  ))    );
 }

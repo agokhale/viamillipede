@@ -81,19 +81,17 @@ while ( !rxworker->rxconf_parent->done_mbox ) {
 		assert ( remainder <= kfootsize); 
 		while ( remainder  && (!restartme) ) {
 			readsize = read( rxworker->sockfd, buffer+cursor, MIN(remainder, MAXBSIZE )); 
-			checkperror ( "rx: read failure"); 
+			checkperror ( "rx: read failure\n"); 
 			if ( errno != 0   || readsize == 0  ) {
-				whisper (2 , "rxw:%02i retired due to read errorno:%i/n",rxworker->id, errno); // XXX reset this worker?? 
+				whisper (2 , "rxw:%02i retired due to read errno:%i\n",rxworker->id, errno); 
 				restartme=1; 
 			} 
-			assert( readsize > 0 || restartme );  //XXX  is this our only clue that the socket died?
 			cursor += readsize; 
 			assert( cursor <= kfootsize ); 
 			remainder -= readsize ; 
 			assert (remainder >=0);
 			if (readsize == 0 && (!restartme) ) { 
 				whisper ( 2, "rx: 0 byte read ;giving up. are we done?\n" );  // XXX this should not be the end
-				//XXXXXXXXdone = 1; 	
 				break;
 			}
 			checkperror ("read buffer"); 	
@@ -137,19 +135,21 @@ while ( !rxworker->rxconf_parent->done_mbox ) {
 				whisper ( 5, "rxw:%02i caught %x done with last frame\n", rxworker->id,  pkt.opcode); 
 				rxworker->rxconf_parent->done_mbox = 1; //XXX xxx 
 			} 
-#ifdef vmpd_strict
 			else {
 				// the last frame will be empty and have a borken cksum
-				rx_checksum = mix ( grx_saved_checksum + pkt.leg_id, buffer, pkt.size ); 
-				if ( rx_checksum != pkt.checksum ) 
-					{ 
-					whisper( 2 , "rx checksum mismatch %lu != %lu", rx_checksum, pkt.checksum); 
-					whisper ( 2, "rxw:%02i offending leg:%lu.%lu after %i stalls\n", rxworker->id,  pkt.leg_id, pkt.size, sequencer_stalls); 
-					}
-				assert ( rx_checksum == pkt.checksum ) ;
-				grx_saved_checksum = rx_checksum; 
+				if ( pkt.checksum )	{
+
+					rx_checksum = mix ( grx_saved_checksum + pkt.leg_id, buffer, pkt.size ); 
+					if ( rx_checksum != pkt.checksum ) 
+						{ 
+						whisper( 2 , "rx checksum mismatch %lu != %lu", rx_checksum, pkt.checksum); 
+						whisper ( 2, "rxw:%02i offending leg:%lu.%lu after %i stalls\n", rxworker->id,  pkt.leg_id, pkt.size, sequencer_stalls); 
+						}
+					assert ( rx_checksum == pkt.checksum ) ;
+					grx_saved_checksum = rx_checksum; 
+				};
+
 			}
-#endif //vmpd_strict 
 				pthread_mutex_lock( &rxworker->rxconf_parent->rxmutex );
 			rxworker->rxconf_parent->next_leg ++ ; // do this last or race out the cksum code
 			pthread_mutex_unlock( &rxworker->rxconf_parent->rxmutex );
