@@ -102,16 +102,13 @@ remotetest () {
 }
 
 ncref () {
-	sample=$1	
-	$rxrsh "pkill -f nc -l 12323 "
-	$rxrsh "  nc -l 12323 > /dev/null " &
-	sshpid=$!
-	sleep 1.3;
+	pkill  nc 
+	nc -d -l 12323 > /dev/null &
+	npid=$!
+	sleep 1;
 	time_start 	
-	$txrsh "zfs send $txpool/$txdataset@initial |  nc -N $rxhost2 12323  "
-	time_stop nc_ref
-	wait $sshpid
-
+	dd if=/dev/zero bs=1m count=10000 |  nc -N localhost 12323 
+	time_stop "nc_ref"
 }
 install_bin () {
 	echo cleaning bins
@@ -142,6 +139,14 @@ smoke() {
 	#echo  "smoke_output: $smoke_output"
 }
 
+hotpath() {
+	/tmp/viamillipede verbose 3  rx 12323 > /dev/null &
+	vrxpid=$!
+	sleep 1
+	time_start
+	dd if=/dev/zero bs=1m count=10000 | /tmp/viamillipede threads 3 verbose 3 tx localhost 12323 
+	time_stop "hotpath"
+	}
 
 time_start()  {
 	begint=`date +"%s"`
@@ -237,4 +242,5 @@ setup_common(){
 
 
 setup_$which_test
-
+hotpath
+ncref

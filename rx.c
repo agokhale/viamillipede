@@ -111,8 +111,8 @@ while ( !rxworker->rxconf_parent->done_mbox ) {
 		int sequencer_stalls =0 ; 
 		while( pkt.leg_id != rxworker->rxconf_parent->next_leg  && ( !restartme ) ) {
 			pthread_mutex_unlock( &rxworker->rxconf_parent->rxmutex );
-#define ktimeout ( 1000 * 3000 ) 
-#define ktimeout_chunks ( 10000  )
+#define ktimeout ( 1000 * 13000 ) 
+#define ktimeout_chunks ( 250000  )
 			usleep ( ktimeout / ktimeout_chunks ); 
 			sequencer_stalls++; 
 			assert ( sequencer_stalls  < ktimeout_chunks && "rx seqencer stalled");
@@ -165,7 +165,7 @@ void rxlaunchworkers ( struct rxconf_s * rxconf ) {
 	int retcode ;
 	rxconf->done_mbox = 0; 
 	rxconf->next_leg = 0;  //initalize sequencer
-	if (tcp_recieve_prep(&(rxconf->sa), &(rxconf->socknum),  rxconf->port ) == 0) {
+	if (tcp_recieve_prep(&(rxconf->sa), &(rxconf->socknum),  rxconf->port ) != 0) {
 		whisper ( 1, "rx: tcp prep failed. this is unfortunate. " ); 	
 		assert( -1); 
 	}  

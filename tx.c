@@ -23,7 +23,7 @@ int dispatch_idle_worker ( struct txconf_s * txconf ) {
 			spins++; 
 			whisper ( 91, "no workers available backing off spins: %i\n", spins ); 
 			sleep_thief ++; 
-			sleep_thief <<= 1; 
+			//sleep_thief <<= 1; 
 			usleep( sleep_thief );
 		}
 	} // we have a winner, return it
@@ -134,7 +134,7 @@ int tx_tcp_connect_next ( struct txconf_s *  txconf  ) {
 	txconf->target_port_cursor ++;
 	txconf->target_port_cursor %= txconf->target_port_count ;
 	assert ( txconf->target_port_cursor < txconf->target_port_count); 
-	whisper ( 2, "connecting %s %d", txconf->target_ports[ txconf->target_port_cursor].name , txconf->target_ports[ txconf->target_port_cursor].port ); 
+	whisper ( 5, "connecting %s %d\t", txconf->target_ports[ txconf->target_port_cursor].name , txconf->target_ports[ txconf->target_port_cursor].port ); 
 	return ( tcp_connect ( 
 		txconf->target_ports[ txconf->target_port_cursor].name, 
 		txconf->target_ports[ txconf->target_port_cursor].port
