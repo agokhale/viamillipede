@@ -178,7 +178,7 @@ setup_smoke() {
 	payload_generator="tar cf - /usr/share/doc"
 	payload_generator="dd if=/dev/zero bs=64k count=10k" 
 	payload_generator="/bin/dd if=/dev/zero bs=64k count=10k "
-	chaos=" chaos 17050"
+	chaos=" chaos 7050"
 	badcrypto=" /usr/bin/openssl enc -aes-128-cbc -k bad_pass -S 5A "
 	expected_md5=`$payload_generator | $badcrypto | md5  `
 	txrsh="ssh $txhost "
