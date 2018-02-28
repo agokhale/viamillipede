@@ -106,13 +106,19 @@ int tcp_connect ( char * host, int port )  {
 	retcode = connect ( ret_sockfd, (struct sockaddr*) &(lsockaddr), sizeof (struct sockaddr) ); 
 	checkperror ( "socket connect"); 
 	if ( retcode != 0 ) perror ("connect() errrr:");  // could be reset by peer.. why?? 
-	assert ( retcode == 0 && "connect fail ");  //XXX this should not be fatal
-	int sockerr; 
-	u_int sockerrsize = sizeof(sockerr); //uhg
-	getsockopt ( ret_sockfd ,  SOL_SOCKET, SO_ERROR, &sockerr, &sockerrsize); 
-	checkperror ( "connect"); 
-	assert ( sockerr ==  0); 
-	whisper (8,  "        connected to %s:%i\n", host, port); 
+	if (  retcode != 0 ) {
+		whisper (  1, "connect fail to %s:%d fd: %i ", host, port, ret_sockfd);  
+		//our only output is the socketfd, so trash it
+		ret_sockfd = -1;
+		whisper (  19, "trashing fd to fail  %s:%d fd: %i ", host, port, ret_sockfd);  
+	} else { 
+		int sockerr; 
+		u_int sockerrsize = sizeof(sockerr); //uhg
+		getsockopt ( ret_sockfd ,  SOL_SOCKET, SO_ERROR, &sockerr, &sockerrsize); 
+		checkperror ( "connect"); 
+		assert ( sockerr ==  0); 
+		whisper (8,  "        connected to %s:%i\n", host, port); 
+	}
 	return ( ret_sockfd ); 
 }
 int  tcp_recieve_prep (struct sockaddr_in * sa, int * socknum,  int inport) {

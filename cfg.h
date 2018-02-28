@@ -49,7 +49,6 @@ struct txworker_s {
 	u_char * buffer; 
 	struct millipacket_s pkt;
 	int writeremainder;
-	FILE * pip;
 	
 };
 

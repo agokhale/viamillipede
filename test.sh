@@ -128,7 +128,7 @@ smoke() {
 	smoke_output="invalid_smoke"
 	$rxrsh "/tmp/viamillipede rx $rxport verbose $verb  $remote_command " > /tmp/smoke_output & 
 	sshpid=$!
-	sleep 1
+	#sleep 1
 	time_start
 	$txrsh "$payloadstream | /tmp/viamillipede checksums $chaos $rxhost_graph verbose $verb $threads "
 	#txrsh "$payloadstream | /tmp/viamillipede $chaos $rxhost_graph verbose $verb $threads "
@@ -140,12 +140,20 @@ smoke() {
 }
 
 hotpath() {
+	pkill viamillipede
 	/tmp/viamillipede verbose 3  rx 12323 > /dev/null &
 	vrxpid=$!
-	sleep 1
 	time_start
 	dd if=/dev/zero bs=1m count=10000 | /tmp/viamillipede threads 3 verbose 3 tx localhost 12323 
 	time_stop "hotpath"
+	}
+deaddetect() {
+	pkill viamillipede
+	/tmp/viamillipede verbose 5  rx 12323 > /dev/null &
+	vrxpid=$!
+	time_start
+	dd if=/dev/zero bs=1m count=10 | /tmp/viamillipede threads 16 verbose 5 tx localhost 12323  tx localhost 6666
+	time_stop "deaddetect"
 	}
 
 time_start()  {
@@ -244,3 +252,4 @@ setup_common(){
 setup_$which_test
 hotpath
 ncref
+deaddetect

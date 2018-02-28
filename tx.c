@@ -85,7 +85,8 @@ void txingest (struct txconf_s * txconf ) {
 		ingest_leg_counter ++; 
 	}
 
-	whisper ( 4, "tx:ingest complete for %lu(bytes) in ",txconf->stream_total_bytes); 
+	whisper ( 4, "tx:ingest complete for %lu(bytes) in \n\n",txconf->stream_total_bytes); 
+	txstatus( txconf, 5); 
 	u_long usecbusy = stopwatch_stop( &(txconf->ticker),4 );
 	//bytes per usec - thats interesting 
 	whisper (6, " %8.4f MBps\n" , ( txconf->stream_total_bytes *0.0000001) / (0.000001 * usecbusy  )    );
@@ -131,13 +132,15 @@ int txpush ( struct txworker_s *txworker ) {
 }
 int tx_tcp_connect_next ( struct txconf_s *  txconf  ) {
 	// pick a port/host from the list, cycleing through  them 
-	txconf->target_port_cursor ++;
+	int chosen_target = txconf->target_port_cursor ++;
 	txconf->target_port_cursor %= txconf->target_port_count ;
 	assert ( txconf->target_port_cursor < txconf->target_port_count); 
-	whisper ( 5, "connecting %s %d\t", txconf->target_ports[ txconf->target_port_cursor].name , txconf->target_ports[ txconf->target_port_cursor].port ); 
+	whisper ( 5, "tx: chosen target %s %d\n", 
+		txconf->target_ports[ txconf->target_port_cursor].name , 
+		txconf->target_ports[ txconf->target_port_cursor].port ); 
 	return ( tcp_connect ( 
-		txconf->target_ports[ txconf->target_port_cursor].name, 
-		txconf->target_ports[ txconf->target_port_cursor].port
+		txconf->target_ports[ chosen_target ].name, 
+		txconf->target_ports[ chosen_target].port
 		) 
 	); 
 }
@@ -151,6 +154,26 @@ int tx_start_net ( struct txworker_s *txworker ) {
 	pthread_mutex_lock ( &(txworker->mutex));
 	txworker->state = 'c'; //connecting
 	txworker->sockfd = tx_tcp_connect_next ( txworker->txconf_parent ); 
+	unsigned int reconnect_fuse = kthreadmax; 
+	while ( (  txworker->sockfd == -1 ) && (reconnect_fuse) ) {
+		usleep ( 100 * 1000 ); 
+		whisper ( 5, "txw:%02ireconnecting\n", txworker->id); 
+		txworker->sockfd = tx_tcp_connect_next ( txworker->txconf_parent ); 
+		 // detect a dead connection and move on to the next port in the target map
+		// scary place to stall holding a lock, looking for a connect()
+		if ( txworker->sockfd > 0) {  
+			checkperror ("clearing nuisance error after recovery\n");
+			whisper (5, "txw:%02i reconnect success fd:%i\n",txworker->id, txworker->sockfd);
+			errno=0;
+		}
+		reconnect_fuse --; 
+	}	
+	if ( reconnect_fuse == 0 ) {
+		//die, we were unable to work thorugh the list and get a grip
+		txworker->state='f';
+		whisper ( 2, "txw:%02d reconnect fuse popped; giving up thread\n", txworker->id );
+		pthread_exit (0); 
+	}
 	/*
 	starting sockets in parallel  can flood the remote end trivially on high bw networks resulting in this syndrome and a partially connnected graph
 	it looks like this on the remote side:
@@ -200,6 +223,7 @@ void txworker (struct  txworker_s *txworker ) {
 		switch (local_state) {
 			/* valid states:
 				E: uninitialized
+				f: faulted; unble to connect
 				a: premable
 				c: connected
 				d: loaded; => push
@@ -236,7 +260,7 @@ void txworker (struct  txworker_s *txworker ) {
 		// this works by allowing a context switch and permitting a dispatch ready thread to push
 		usleep ( sleep_thief ); 
 	} // while !done 
-	pclose ( txworker->pip); 
+	whisper ( 8,  "txw:%02i worker done", txworker->id); 
 } //  txworker
 
 void txlaunchworkers ( struct txconf_s * txconf) {
@@ -272,11 +296,10 @@ void txlaunchworkers ( struct txconf_s * txconf) {
 }
 
 void txstatus ( struct txconf_s* txconf , int log_level) {
-	whisper ( log_level, "\n");
-	
+	whisper ( log_level, "\nstate:leg-remainder(k)\n");
 	for ( int i=0; i < txconf->worker_count ; i++) {
 		if ( i % 8 == 0) { whisper  ( log_level , " %02i \n" ,i ); }
-		whisper(log_level, "%c:%lu-%i ", 
+		whisper(log_level, "%c:%lu-%i\t", 
 				txconf->workers[i].state, 
 				txconf->workers[i].pkt.leg_id,
 				(txconf->workers[i].writeremainder) >> 10 //kbytes are sufficient
@@ -295,10 +318,13 @@ void txbusyspin ( struct txconf_s* txconf ) {
 		busy_cycles++; 
 		int busy_workers = 0; 
 		for ( int i =0; i < txconf->worker_count ; i++ ) {
-			//pthread_mutex_lock (  &(txconf->workers[i].mutex) ); 
+			//XXXXXpthread_mutex_lock (  &(txconf->workers[i].mutex) ); 
 			instate =  txconf->workers[i].state	;
 			//pthread_mutex_unlock (  &(txconf->workers[i].mutex) ); 
-			if ( instate != 'i') busy_workers++;  // XXX janky structure  continue
+			if ( ( instate != 'i') && ( instate != 'f' ))  	{
+				busy_workers++;
+				break; // get out of here if there are busy workers
+			}
 		} 
 		done = ( busy_workers == 0 ) ; 
 	}
@@ -322,6 +348,19 @@ void partingshot() {
 	checkperror ( " signal caught"); 
 	exit (-6);	
 }
+void init_workers ( struct txconf_s * txconf ) {
+	int wcursor=kthreadmax; 
+	while ( wcursor -- ) {
+		txconf->workers[wcursor].id=wcursor; 
+		txconf->workers[wcursor].txconf_parent=txconf; 
+		txconf->workers[wcursor].state='E'; 
+		pthread_mutex_init ( &(txconf->workers[wcursor].mutex), NULL); 
+		txconf->workers[wcursor].sockfd=0; 
+		txconf->workers[wcursor].pkt.size=0; 
+		txconf->workers[wcursor].pkt.leg_id=0; 
+		txconf->workers[wcursor].writeremainder=0; 
+	}
+}
 
 void tx (struct txconf_s * txconf) {
 	int retcode; 
@@ -333,10 +372,10 @@ void tx (struct txconf_s * txconf) {
         signal (SIGHUP, &partingshot);
 	pthread_mutex_init ( &(txconf->mutex), NULL ) ; 
 	stopwatch_start( &(txconf->ticker) ); 
+	init_workers( txconf ); 
 	txlaunchworkers( txconf ); 	
 	txingest ( txconf ); 
 	txbusyspin ( txconf ); 
-
 	whisper ( 2, "all complete for %lu(bytes) in ",txconf->stream_total_bytes); 
 	u_long usecbusy = stopwatch_stop( &(txconf->ticker),2 );
 	//bytes per usec - thats interesting   ~== to mbps

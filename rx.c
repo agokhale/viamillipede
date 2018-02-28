@@ -24,9 +24,9 @@ while ( !rxworker->rxconf_parent->done_mbox ) {
 	whisper ( 16, "rxw:%02i fd:%i expect yoes\n", rxworker->id, rxworker->sockfd); 
 	read ( rxworker->sockfd , buffer, (size_t)  4 ); //XXX this is vulnerable to slow starts
 	if ( bcmp ( buffer, checkphrase, 4 ) == 0 )  // XXX use programmamble checkphrase
-		{ whisper ( 13, "checkphrase ok\n"); } 
+		{ whisper ( 13, "rxw:%02d checkphrase ok\n", rxworker->id); } 
 	else 
-		{ whisper  (1,  "checkphrase failure "); 
+		{ whisper  (1,  "rxw:%02d checkphrase failure ", rxworker->id); 
 		assert ( -1 && "checkphrase failure "); 
 		exit ( -1); 
 		}	
