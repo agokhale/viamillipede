@@ -104,13 +104,11 @@ int tcp_connect ( char * host, int port )  {
 	ret_sockfd =  socket ( AF_INET,SOCK_STREAM, 0 );  
 	assert ( ret_sockfd > 0  && "socket fishy"); 
 	retcode = connect ( ret_sockfd, (struct sockaddr*) &(lsockaddr), sizeof (struct sockaddr) ); 
-	checkperror ( "socket connect"); 
-	if ( retcode != 0 ) perror ("connect() errrr:");  // could be reset by peer.. why?? 
 	if (  retcode != 0 ) {
-		whisper (  1, "connect fail to %s:%d fd: %i ", host, port, ret_sockfd);  
+		whisper (  1, "tx: connect failed to %s:%d fd: %i \n", host, port, ret_sockfd);  
 		//our only output is the socketfd, so trash it
 		ret_sockfd = -1;
-		whisper (  19, "trashing fd to fail  %s:%d fd: %i ", host, port, ret_sockfd);  
+		whisper (  19, "trashing fd to fail  %s:%d fd: %i \n", host, port, ret_sockfd);  
 	} else { 
 		int sockerr; 
 		u_int sockerrsize = sizeof(sockerr); //uhg

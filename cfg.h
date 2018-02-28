@@ -65,6 +65,7 @@ struct txconf_s {
 	int target_port_cursor; 	
 	struct target_port_s target_ports[kthreadmax]; 
 	pthread_mutex_t mutex;
+	int done;
 };
 
 

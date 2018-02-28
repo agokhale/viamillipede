@@ -1,5 +1,6 @@
 #!/bin/sh 
-# #!/bin/sh -x
+#!/bin/sh -x
+pkill viamillipede
 which_test=${1:-smoke}
 
 
@@ -92,7 +93,7 @@ remotetest () {
 	set rem_md=`$rsh " md5 -q /tmp/junk"`
 	set     md=`md5 -q $sample`
 	if [ $md  -eq $rem_md ]; then 
-		banner -w 40  pass
+		echo pass
 	else 
 		banner -w 40 fail
 
@@ -139,22 +140,36 @@ smoke() {
 	#echo  "smoke_output: $smoke_output"
 }
 
+tiny() {
+	pkill viamillipede
+	/tmp/viamillipede verbose 3  rx 12323 > /dev/null &
+	vrxpid=$!
+	echo 'wat' | /tmp/viamillipede threads 3 verbose 3 tx localhost 12323  || exit 1
+	}
 hotpath() {
 	pkill viamillipede
 	/tmp/viamillipede verbose 3  rx 12323 > /dev/null &
 	vrxpid=$!
 	time_start
-	dd if=/dev/zero bs=1m count=10000 | /tmp/viamillipede threads 3 verbose 3 tx localhost 12323 
+	dd if=/dev/zero bs=1m count=10000 | /tmp/viamillipede threads 3 verbose 3 tx localhost 12323  || exit 1
 	time_stop "hotpath"
 	}
 deaddetect() {
 	pkill viamillipede
-	/tmp/viamillipede verbose 5  rx 12323 > /dev/null &
+	/tmp/viamillipede verbose 4  rx 12323 > /dev/null &
 	vrxpid=$!
 	time_start
-	dd if=/dev/zero bs=1m count=10 | /tmp/viamillipede threads 16 verbose 5 tx localhost 12323  tx localhost 6666
+	dd if=/dev/zero bs=1m count=10 | /tmp/viamillipede  checksums threads 16 verbose 4 tx localhost 12323  tx localhost 6666 || exit 2
 	time_stop "deaddetect"
 	}
+deaddetect_extended() {
+	pkill viamillipede
+	/tmp/viamillipede verbose 4  rx 12323 > /dev/null &
+	vrxpid=$!
+	time_start
+	dd if=/dev/zero bs=1m count=3000 | /tmp/viamillipede checksums threads 16 verbose 4 tx localhost 12323  tx localhost 6666 || exit 3
+	time_stop "deaddetect_extended"
+}
 
 time_start()  {
 	begint=`date +"%s"`
@@ -171,7 +186,7 @@ zsend_shunt () {
 	$txrsh "zfs send $txpool/$txdataset@initial > /dev/null"
 	time_stop zsend_shunt
 	time_start
-	$txrsh "zfs send $txpool/$txdataset@initial | md5 "
+	expected_md5=`$txrsh "zfs send $txpool/$txdataset@initial | md5 "`
 	time_stop zsend_md5
 }
 zsend_dd_shunt () {
@@ -181,6 +196,15 @@ zsend_dd_shunt () {
 	time_stop zsend_dd_shunt
 }
 
+check_output( ){
+	if [ "$expected_md5" = "$smoke_output" ]; then
+	
+		echo pass
+	else
+		banner -w50 fail 
+		exit -1
+	fi
+}
 setup_smoke() {
 	txhost="localhost"
 	rxhost=$txhost
@@ -200,12 +224,7 @@ setup_smoke() {
 	install_bin
 	smoke "$payload_generator | $badcrypto" " $rxcommand " $verb $thread_count
 	#failcase smoke "$payload_generator " " $rxcommand " $verb $thread_count
-	if [ "$expected_md5" = "$smoke_output" ]; then
-		echo pass
-	else
-		echo fail 
-		exit -1
-	fi
+	check_output
 }
 
 setup_grand() {
@@ -224,21 +243,26 @@ setup_grand() {
 	rxhost9="192.168.238.9"
 	rxport=12323
 	rxhost_graph="tx $rxhost2 $rxport tx $rxhost3 $rxport tx $rxhost4 $rxport \
-		tx $rxhost5 $rxport tx $rxhost6 $rxport tx $rxhost7 $rxport tx $rxhost8 $rxport \
-		tx $rxhost9 $rxport tx $rxhost $rxport "
+              tx $rxhost5 $rxport tx $rxhost6 $rxport tx $rxhost7 $rxport tx $rxhost8 $rxport \
+              tx $rxhost9 $rxport tx $rxhost $rxport "
+	txrsh="ssh root@$txhost "
+	rxrsh="ssh root@$rxhost "
 	time_start 
 	$txrsh "true"
 	time_stop trvialcommand
-	makepayloads
+	#makepayloads
 	install_bin 
 	zsend_shunt
+	# populate expectedmd5
 	zsend_dd_shunt
 	ncref
 	thread_counts=`jot 16 1`
 	setup_common
+	payload_generator="zfs send $txpool/$txdataset@initial"
 	for thread_count in $thread_counts 
 	do 
-		smoke "zfs send $txpool/$txdataset@initial" 2 $thread_count
+		smoke " $payload_generator "  " | md5 "  2 $thread_count
+		check_output
 	done
 	#$cleanpayloadds
 }
@@ -248,8 +272,9 @@ setup_common(){
 	rxrsh="ssh root@$rxhost "
 }
 
-
-setup_$which_test
+tiny
 hotpath
-ncref
+#ncref
 deaddetect
+deaddetect_extended
+setup_$which_test

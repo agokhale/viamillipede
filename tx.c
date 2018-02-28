@@ -45,12 +45,13 @@ void txingest (struct txconf_s * txconf ) {
 	int readsize;
 	int in_fd = STDIN_FILENO;
 	int foot_cursor =0;
-	int done =0; 
 	unsigned long saved_checksum = 0xff;
 	int ingest_leg_counter = 0; 
 	txconf->stream_total_bytes=0; 
 	checkperror("nuisancse ingest err");
-	while ( !done ) {
+	pthread_mutex_lock ( &(txconf->mutex) ) ; 
+	while ( !txconf->done ) {
+		pthread_mutex_unlock ( &(txconf->mutex) ) ; 
 		int worker = dispatch_idle_worker ( txconf ); 
 		assert (  (txconf->workers[worker].buffer) != NULL ); 
 		readsize = bufferfill (  in_fd ,(u_char *) (txconf->workers[worker].buffer) , kfootsize  ) ;  
@@ -75,7 +76,9 @@ void txingest (struct txconf_s * txconf ) {
 			txconf->stream_total_bytes += readsize ; 
 		} else { 
 			whisper ( 4, "txingest no more stdin, send shutdown"); 
-			done = 1; 
+			pthread_mutex_lock ( &(txconf->mutex) ) ; 
+			txconf->done = 1; 
+			pthread_mutex_unlock ( &(txconf->mutex) ) ; 
 			int worker = dispatch_idle_worker ( txconf ); 
 			txconf->workers[worker].pkt.size=0; 
 			txconf->workers[worker].pkt.leg_id = ingest_leg_counter; 
@@ -83,8 +86,10 @@ void txingest (struct txconf_s * txconf ) {
 			start_worker ( &(txconf->workers[worker]) );
 		}
 		ingest_leg_counter ++; 
+		pthread_mutex_lock ( &(txconf->mutex) ) ; 
 	}
-
+	txconf->done = 1; 
+	pthread_mutex_unlock ( &(txconf->mutex) ) ; 
 	whisper ( 4, "tx:ingest complete for %lu(bytes) in \n\n",txconf->stream_total_bytes); 
 	txstatus( txconf, 5); 
 	u_long usecbusy = stopwatch_stop( &(txconf->ticker),4 );
@@ -151,31 +156,42 @@ int tx_start_net ( struct txworker_s *txworker ) {
 	int retcode;
 	char readback[2048]; 
 	
-	pthread_mutex_lock ( &(txworker->mutex));
 	txworker->state = 'c'; //connecting
 	txworker->sockfd = tx_tcp_connect_next ( txworker->txconf_parent ); 
 	unsigned int reconnect_fuse = kthreadmax; 
 	while ( (  txworker->sockfd == -1 ) && (reconnect_fuse) ) {
+
+		pthread_mutex_lock ( &(txworker->txconf_parent->mutex) ) ; 
+		if ( txworker->txconf_parent->done ) {
+			pthread_mutex_unlock ( &(txworker->txconf_parent->mutex) ) ; 
+			txworker->state='f';
+			whisper ( 2, "txw:%02d ingest done reconnect not required anymore; giving up thread\n", txworker->id );
+			pthread_exit (0); 
+		}
+		pthread_mutex_unlock ( &(txworker->txconf_parent->mutex) ) ; 
+
+		pthread_mutex_lock ( &(txworker->mutex));
 		usleep ( 100 * 1000 ); 
 		whisper ( 5, "txw:%02ireconnecting\n", txworker->id); 
 		txworker->sockfd = tx_tcp_connect_next ( txworker->txconf_parent ); 
 		 // detect a dead connection and move on to the next port in the target map
 		// scary place to stall holding a lock, looking for a connect()
-		if ( txworker->sockfd > 0) {  
-			checkperror ("clearing nuisance error after recovery\n");
+		if ( txworker->sockfd > 0 ) {  
+			//checkperror ("clearing nuisance error after recovery\n");
 			whisper (5, "txw:%02i reconnect success fd:%i\n",txworker->id, txworker->sockfd);
 			errno=0;
 		}
 		reconnect_fuse --; 
 	}	
-	if ( reconnect_fuse == 0 ) {
+	if ( reconnect_fuse == 0  ) {
 		//die, we were unable to work thorugh the list and get a grip
 		txworker->state='f';
 		whisper ( 2, "txw:%02d reconnect fuse popped; giving up thread\n", txworker->id );
 		pthread_exit (0); 
 	}
 	/*
-	starting sockets in parallel  can flood the remote end trivially on high bw networks resulting in this syndrome and a partially connnected graph
+	starting sockets in parallel  can flood the remote end trivially on high bw networks resulting in 
+	this syndrome and a partially connnected graph
 	it looks like this on the remote side:
 	sonewconn: pcb 0xfffff8014ba261a8: Listen queue overflow: 10 already in queue awaiting acceptance (2 occurrences)
 	pid 4752 (viamillipede), uid 1001: exited on signal 6 (core dumped)
@@ -266,6 +282,7 @@ void txworker (struct  txworker_s *txworker ) {
 void txlaunchworkers ( struct txconf_s * txconf) {
 	int worker_cursor = 0;
 	int ret;	
+	checkperror ("nuicance before launch"); 
 	while ( worker_cursor < txconf->worker_count )  {
 		txconf->workers[worker_cursor].state = '0'; // unitialized
 		txconf->workers[worker_cursor].txconf_parent = txconf; // allow inpection/inception
@@ -279,6 +296,7 @@ void txlaunchworkers ( struct txconf_s * txconf) {
 		txconf->workers[worker_cursor].buffer = calloc ( 1,(size_t) kfootsize ); 
 		assert (txconf->workers[worker_cursor].buffer != NULL && "insufficient memory up front" ); 
 		//digression: pthreads murders all possible kittens stored in  argument types
+		checkperror ("nuicance pthread error launch"); 
 		ret = pthread_create ( 
 			&(txconf->workers[worker_cursor].thread ),
 			NULL ,
@@ -305,6 +323,7 @@ void txstatus ( struct txconf_s* txconf , int log_level) {
 				(txconf->workers[i].writeremainder) >> 10 //kbytes are sufficient
 			);
 		}
+	whisper ( log_level, "\n");
 }
 void txbusyspin ( struct txconf_s* txconf ) {
 	// wait until all legs are pushed; called after ingest is complete
@@ -364,15 +383,21 @@ void init_workers ( struct txconf_s * txconf ) {
 
 void tx (struct txconf_s * txconf) {
 	int retcode; 
-	int done = 0; 
 	gtxconf = txconf;	
+	checkperror (" nuicance tx 0");
 	//start control channel
+	stopwatch_start( &(txconf->ticker) ); 
         signal (SIGINFO, &wat);
         signal (SIGINT, &partingshot);
         signal (SIGHUP, &partingshot);
+	checkperror (" nuicance tx 1");
 	pthread_mutex_init ( &(txconf->mutex), NULL ) ; 
-	stopwatch_start( &(txconf->ticker) ); 
+	pthread_mutex_lock ( &(txconf->mutex) ) ; 
+	checkperror (" nuicance tx 2");
+	txconf->done = 0;
+	pthread_mutex_unlock ( &(txconf->mutex) ) ; 
 	init_workers( txconf ); 
+	checkperror (" nuicance tx 3");
 	txlaunchworkers( txconf ); 	
 	txingest ( txconf ); 
 	txbusyspin ( txconf ); 
