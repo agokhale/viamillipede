@@ -130,7 +130,7 @@ int txpush ( struct txworker_s *txworker ) {
 		txworker->state='i';  // idle ok
 	} else  {
 		txworker->state='x';  // dead  do not transmit more; save state and do it again
-		whisper ( 3, "rxw:%02i is dead\n", txworker->id); 
+		whisper ( 7, "rxw:%02i is dead\n", txworker->id); 
 	}
 	pthread_mutex_unlock (&(txworker->txconf_parent->mutex));
 	return retcode; 
@@ -215,7 +215,7 @@ int tx_start_net ( struct txworker_s *txworker ) {
 	pthread_mutex_unlock ( &(txworker->mutex));
 	return retcode;
 }
-void txworker (struct  txworker_s *txworker ) {
+void txworker_sm (struct  txworker_s *txworker ) {
 	int done =0; 
 	int retcode =-1; 
 	char local_state = 0 ;
@@ -224,6 +224,7 @@ void txworker (struct  txworker_s *txworker ) {
 	pthread_mutex_init ( &(txworker->mutex)	, NULL ) ; 
 	retcode = tx_start_net( txworker ) ; 
 	assert (retcode > 0 ); 
+	
 	whisper ( 11, "txw:%i idling fd:%i\n", txworker->id, txworker->sockfd);
 	pthread_mutex_lock ( &(txworker->mutex));
 	txworker->state = 'i'; //idle
@@ -234,18 +235,27 @@ void txworker (struct  txworker_s *txworker ) {
 	checkperror( "worker buffer allocator");
 	while ( !done ) {
 		pthread_mutex_lock ( &(txworker->txconf_parent->mutex));
+		assert ( (txworker->id  >= 0 ) && ( txworker->id < kthreadmax));
+		if ( (txworker->txconf_parent->done)	) {
+			/*p  *((*((struct txworker_s *)txworker)).txconf_parent)
+			 y cant lld inspect:
+			
+			*/
+			whisper (4, "txw:%02i nothing left to do\n",txworker->id ); 
+			done = 1; 
+		}
 		local_state = txworker->state; 
 		pthread_mutex_unlock ( &(txworker->txconf_parent->mutex));
 		switch (local_state) {
 			/* valid states:
 				E: uninitialized
 				f: faulted; unble to connect
-				a: premable
-				c: connected
-				d: loaded; => push
+				a: premable; we think we are talking to  a villipede server
+				c: connecting; idle when connected ; die if  we are done or cant connected to anything
+				d: dispatched buffer is loaded; now send it
 				Pp: pushing
 				i: idle but connected
-				x: disconnected , still bearing a buffer .. can't bail yet reconnect  => push
+				x: disconnected, still bearing a buffer. attempt reconnection
 				n: not yet connected,  new no buffer ??? connect => idle
 				
 			*/
@@ -254,13 +264,13 @@ void txworker (struct  txworker_s *txworker ) {
 			case 'd': 
 				 if ( txpush ( txworker ) == 0) {
 					// retry  this
-					whisper ( 2, "txw: %i failed, unconnected , will retry leg %lu ", txworker->id , txworker->pkt.leg_id); 
+					whisper ( 3, "txw:%02i socket failed, scheduling retry leg:%lu\n", txworker->id , txworker->pkt.leg_id); 
 				} 
 				sleep_thief=0; 
 				break; 
 			case 'x': 
 				//reinitialize socket and retry a dead worker
-				whisper ( 2, "txw: %i starting recovery , will retry leg %lu ", txworker->id , txworker->pkt.leg_id); 
+				whisper ( 6, "txw:02%i starting recovery, preserved leg %lu \n", txworker->id , txworker->pkt.leg_id); 
 				errno =0;
 				tx_start_net ( txworker); 
 				goto restartcase;
@@ -270,9 +280,10 @@ void txworker (struct  txworker_s *txworker ) {
 		state_spin ++; 
 		if ( (state_spin % 30000) == 0 && ( txworker->state == 'i' ) )  {
 			//txstatus ( txworker -> txconf_parent,10 ) ; 
-			whisper ( 9, "txw:%i is lonely after %i spins \n", txworker->id, state_spin); 
+			whisper ( 9, "txw:%02i is lonely after %i spins \n", txworker->id, state_spin); 
 		}
 		sleep_thief ++; // this Looks crazy ; but it's good for 30% 
+		//XXX back off tuning tbd
 		// this works by allowing a context switch and permitting a dispatch ready thread to push
 		usleep ( sleep_thief ); 
 	} // while !done 
@@ -301,7 +312,7 @@ void txlaunchworkers ( struct txconf_s * txconf) {
 			&(txconf->workers[worker_cursor].thread ),
 			NULL ,
 			//clang suggest this gibberish, why question?
-			(void *(* _Nonnull)(void *))&txworker,  
+			(void *(* _Nonnull)(void *))&txworker_sm,  
 			&(txconf->workers[worker_cursor]) 
 			);
 		checkperror ("pthread launch"); 
