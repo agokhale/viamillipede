@@ -12,6 +12,8 @@ int gverbose = 0;
 unsigned long gchaos=0; 
 unsigned long gchaoscounter=0; 
 int gchecksums =0; 
+char * gcheckphrase;
+
 
 
 int main ( int argc, char ** argv ) {
@@ -21,7 +23,7 @@ int mode =-1;
 int users_input_port; 
 struct txconf_s txconf; 
 struct rxconf_s rxconf; 
-
+gcheckphrase="yoes";
 ( argc > 1) ? : usage (); 
 txconf.worker_count = 16;
 txconf.target_port_count=0; 
@@ -88,9 +90,14 @@ while ( arg_cursor  < argc  ) {
 		checkperror ( " main chaos -3 ");
 		whisper ( 11, "chaos set to %lu", gchaos ); 	
 	}
-	arg_cursor ++;
+	if ( strcmp ( argv[arg_cursor] , "checkphrase" )  == 0 ) {
+		assert ( ++ arg_cursor < argc  && "checkphrase  needs  char[] ");
+		gcheckphrase=argv[arg_cursor];
+		whisper ( 11, "checkphrase set to %s", gcheckphrase ); 	
 	}
-checkperror ( " main nuiscance");
+	arg_cursor ++;
+}
+checkperror( "main nuiscance");
 
 switch ( mode ) {
 	case 1: tx (&txconf); break; 

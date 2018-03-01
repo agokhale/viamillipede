@@ -1,5 +1,6 @@
 #include "worker.h"
 
+extern char * gcheckphrase;
 unsigned long grx_saved_checksum = 0xff; 
 
 void rxworker ( struct rxworker_s * rxworker ) {
@@ -14,23 +15,19 @@ buffer = calloc ( 1 , (size_t)kfootsize );
 while ( !rxworker->rxconf_parent->done_mbox ) {
 	restartme =0;
 	assert ( rxworker->id < kthreadmax ); 
-	do {
-		pthread_mutex_lock  ( &rxworker->rxconf_parent->sa_mutex); 
-		whisper ( 7, "rxw:%02i accepting and locked\n", rxworker->id); 
-		rxworker->sockfd = tcp_accept ( &(rxworker->rxconf_parent->sa), rxworker->rxconf_parent->socknum); 
-		whisper ( 5, "rxw:%02i accepted fd:%i \n", rxworker->id, rxworker->sockfd); 
-		pthread_mutex_unlock( &rxworker->rxconf_parent->sa_mutex ); 
-	} while (0);
-	whisper ( 16, "rxw:%02i fd:%i expect yoes\n", rxworker->id, rxworker->sockfd); 
+	pthread_mutex_lock  ( &rxworker->rxconf_parent->sa_mutex); 
+	whisper ( 7, "rxw:%02i accepting and locked\n", rxworker->id); 
+	rxworker->sockfd = tcp_accept ( &(rxworker->rxconf_parent->sa), rxworker->rxconf_parent->socknum); 
+	whisper ( 5, "rxw:%02i accepted fd:%i \n", rxworker->id, rxworker->sockfd); 
+	pthread_mutex_unlock( &rxworker->rxconf_parent->sa_mutex ); 
+	whisper ( 16, "rxw:%02i fd:%i expect %s\n", rxworker->id, rxworker->sockfd, gcheckphrase); 
 	read ( rxworker->sockfd , buffer, (size_t)  4 ); //XXX this is vulnerable to slow starts
-	if ( bcmp ( buffer, checkphrase, 4 ) == 0 )  // XXX use programmamble checkphrase
+	if ( bcmp ( buffer, gcheckphrase, 4 ) == 0 ) 
 		{ whisper ( 13, "rxw:%02d checkphrase ok\n", rxworker->id); } 
-	else 
-		{ whisper  (1,  "rxw:%02d checkphrase failure ", rxworker->id); 
+	else { whisper  (1,  "rxw:%02d checkphrase failure  got: %x  %x %x %x", rxworker->id, buffer[0], buffer[1], buffer[2], buffer[4]); 
 		assert ( -1 && "checkphrase failure "); 
 		exit ( -1); 
-		}	
-
+	}	
 	checkperror ("checkphrase  nuiscance ");
 	whisper ( 18, "rxw:%02i send ok\n", rxworker->id ); 
 	if ( write (rxworker->sockfd, okphrase, (size_t) 2 ) != 2 )  {
@@ -75,7 +72,7 @@ while ( !rxworker->rxconf_parent->done_mbox ) {
 		assert ( pkt.preamble == preamble_cannon_ul   && "preamble check");
 		assert ( pkt.size >= 0 ); 
 		assert ( pkt.size <= kfootsize); 
-		whisper ( 9, "rxw:%02i leg:%lu siz:%lu op:%x caught new leg  \n", rxworker->id,  pkt.leg_id , pkt.size,pkt.opcode); 
+		whisper ( 9, "rxw:%02i leg:%lu siz:%lu op:%x caught new leg\n", rxworker->id,  pkt.leg_id , pkt.size,pkt.opcode); 
 		int remainder = pkt.size; 
 		int remainder_counter =0; 
 		assert ( remainder <= kfootsize); 
@@ -83,7 +80,7 @@ while ( !rxworker->rxconf_parent->done_mbox ) {
 			readsize = read( rxworker->sockfd, buffer+cursor, MIN(remainder, MAXBSIZE )); 
 			checkperror ( "rx: read failure\n"); 
 			if ( errno != 0   || readsize == 0  ) {
-				whisper (2 , "rxw:%02i retired due to read errno:%i\n",rxworker->id, errno); 
+				whisper (4 , "rxw:%02i retired due to read len:%i errno:%i\n",rxworker->id,readsize, errno); 
 				restartme=1; 
 			} 
 			cursor += readsize; 
@@ -106,7 +103,13 @@ while ( !rxworker->rxconf_parent->done_mbox ) {
 		/*block until the sequencer is ready to push this 
 		 XXXX  suboptimal  sequencer ?? prove it!
 		 perhaps a minheap??
-		 bufferblock == next expected bufferblock
+
+		Heisenberg compensator theory of operation:
+		next_leg will monotonically increment  asserting that the output stream is  
+		ordered by tracking it's assingment from the ingest code. 
+	
+		If the sequencer blocks for an extended time; it's unlikely to ever get better 
+		so decare and error and exit
 		*/
 		int sequencer_stalls =0 ; 
 		while( pkt.leg_id != rxworker->rxconf_parent->next_leg  && ( !restartme ) ) {
@@ -115,7 +118,7 @@ while ( !rxworker->rxconf_parent->done_mbox ) {
 #define ktimeout_chunks ( 250000  )
 			usleep ( ktimeout / ktimeout_chunks ); 
 			sequencer_stalls++; 
-			assert ( sequencer_stalls  < ktimeout_chunks && "rx seqencer stalled");
+			assert ( sequencer_stalls  < ktimeout_chunks && "transporter accident! rx seqencer stalled");
 			pthread_mutex_lock( &rxworker->rxconf_parent->rxmutex ); // do nothing but compare seqeuncer under lock
 		}
 		pthread_mutex_unlock( &rxworker->rxconf_parent->rxmutex );
@@ -132,7 +135,7 @@ while ( !rxworker->rxconf_parent->done_mbox ) {
 			checkperror ("write buffer"); 	
 			readlen = readsize = -111;
 			if ( pkt.opcode == end_of_millipede ) {
-				whisper ( 5, "rxw:%02i caught %x done with last frame\n", rxworker->id,  pkt.opcode); 
+				whisper ( 5, "rxw:%02i caught 0x%x done with last frame\n", rxworker->id,  pkt.opcode); 
 				rxworker->rxconf_parent->done_mbox = 1; //XXX xxx 
 			} 
 			else {

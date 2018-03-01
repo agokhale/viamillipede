@@ -1,7 +1,15 @@
 #!/bin/sh 
 #!/bin/sh -x
 pkill viamillipede
-which_test=${1:-smoke}
+which_test=${1:-default}
+
+catch_trap() {
+        echo "caught trap pid $$  $* for $mytag -  cleaning up locks and dying"
+	pkill viamillipede
+	$rxrsh "pkill viamillipede"
+	$rxrsh "pkill viamillipede"
+}
+#trap catch_trap TERM INT KILL BUS FPE 2 
 
 
 dddriver() {
@@ -48,59 +56,6 @@ zstreamref () {
 	zfs send $ds  | dd bs=8k | $rsh "zfs recv $target_ds" 
 }
 
-zstreamremote () {
-	ds="dozer/bbone@c"
-	target_ds="zz/sampletarget"
-	user="root"
-	rsh="ssh $user@$host "
-	
-	$rsh "pkill viamillipede-sample "  
-	pkill viamillipede
-	$rsh  " zfs destroy -r  $target_ds"
-	cat viamillipede |  $rsh "cat - > /tmp/viamillipede-sample" 
-	$rsh "chmod 700 /tmp/viamillipede-sample"
- 	$rsh "cd /tmp; ./viamillipede-sample rx $port verbose $verb  | zfs recv $target_ds  " 2> /tmp/verr &
-	sshpid=$!
-	sleep 1.8
-	zfs send $ds  |  ./viamillipede  verbose $verb $targets  $threads
-	#vmpid=$!
-	sleep 1.8
-	#wait $vmpid
-	sudo kill $sshpid $tdpid $vmpid
-	#cat /tmp/verr
-	}
-remotetest () {
-	pwd
-	pkill viamillipede
-	$rsh "pkill viamillipede-sample " 
-	cat viamillipede |  $rsh "cat - > /tmp/viamillipede-sample" &
-	$rsh "rm  -f /tmp/junk" &
-	#sudo tcpdump -i em0 -s0 -w /tmp/mili.pcap host $host and port $port  &
-	tdpid=$!
-	$rsh "chmod 700 /tmp/viamillipede-sample"
- 	$rsh "cd /tmp; setenv millipede_deserialiser ' /bin/cat - ';   ./viamillipede-sample rx $port verbose $verb  > /tmp/junk  " 2> /tmp/verr &
-	sshpid=$!
-	#there is a splitsecond race while listeners are onlined; please excuse the gap
-	sleep 1.7 
-	viamillipede  verbose $verb $targets threads 9  < $sample &
-	vmpid=$!
-	sleep 1.7 
-	#kill -s INFO $vmpid
-	#sleep 10.7 
-	wait $vmpid
-	sudo kill $sshpid $tdpid $vmpid
-	cat /tmp/verr
-	set rem_md=`$rsh " md5 -q /tmp/junk"`
-	set     md=`md5 -q $sample`
-	if [ $md  -eq $rem_md ]; then 
-		echo pass
-	else 
-		banner -w 40 fail
-
-	fi
-	
-	
-}
 
 ncref () {
 	pkill  nc 
@@ -113,12 +68,13 @@ ncref () {
 }
 install_bin () {
 	echo cleaning bins
-	$txrsh "pkill viamillipede" &
-	$rxrsh "pkill viamillipede" &
+	make clean; make || exit 2
+	$txrsh "pkill viamillipede; rm -f /tmp/viamillipede" 
+	$rxrsh "pkill viamillipede; rm -f /tmp/viamillipede" 
 	cat viamillipede | $txrsh " cat -  > /tmp/viamillipede"  
 	cat viamillipede | $rxrsh " cat -  > /tmp/viamillipede" 
-	$txrsh "chmod 700 /tmp/viamillipede" &
-	$rxrsh "chmod 700 /tmp/viamillipede" &
+	$txrsh "chmod 700 /tmp/viamillipede" 
+	$rxrsh "chmod 700 /tmp/viamillipede" 
 }
 
 smoke() { 
@@ -132,7 +88,6 @@ smoke() {
 	#sleep 1
 	time_start
 	$txrsh "$payloadstream | /tmp/viamillipede checksums $chaos $rxhost_graph verbose $verb $threads "
-	#txrsh "$payloadstream | /tmp/viamillipede $chaos $rxhost_graph verbose $verb $threads "
 	time_stop "smoke payload: $payloadstream verbose: $verb remotecmd: $2  threads: $threads"
 	wait $sshpid
 	smoke_output=`cat /tmp/smoke_output; rm /tmp/smoke_output`
@@ -140,34 +95,44 @@ smoke() {
 	#echo  "smoke_output: $smoke_output"
 }
 
-tiny() {
+setup_checkphrase() {
+	# seems that hosts that dont respond stall the connect routine
 	pkill viamillipede
-	/tmp/viamillipede verbose 3  rx 12323 > /dev/null &
+	$rxrsh "/tmp/viamillipede verbose 3 checkphrase tuuW  rx 12323 > /dev/null" &
 	vrxpid=$!
-	echo 'wat' | /tmp/viamillipede threads 3 verbose 3 tx localhost 12323  || exit 1
+	#this fails; let it, dont die
+	$txrsh " echo 'wat' | /tmp/viamillipede threads 3 verbose 3 checkphrase nope tx $rxhost 12323 " || true
 	}
-hotpath() {
-	pkill viamillipede
-	/tmp/viamillipede verbose 3  rx 12323 > /dev/null &
+tiny() {
+	$rxrsh "/tmp/viamillipede verbose 3 rx 12323 > /dev/null " &
+	vrxpid=$!
+	$txrsh "echo 'wat' | /tmp/viamillipede threads 3 verbose 3 tx $rxhost 12323"  || exit 1
+	}
+setup_hotpath() {
+	$rxrsh "/tmp/viamillipede verbose 2 rx 12323 > /dev/null" &
 	vrxpid=$!
 	time_start
-	dd if=/dev/zero bs=1m count=10000 | /tmp/viamillipede threads 3 verbose 3 tx localhost 12323  || exit 1
+	$txrsh "dd if=/dev/zero bs=1m count=10000 | /tmp/viamillipede threads 8 verbose 2 $rxhost_graph " || exit 1
 	time_stop "hotpath"
-	}
+	# expected run on uncontended 10Gbps path: 
+	#10485760000 bytes transferred in 10.722739 secs (977899372 bytes/sec)
+ 	#976.610 MBps
+	#hotpath took 11(s)
+}
 deaddetect() {
 	pkill viamillipede
-	/tmp/viamillipede verbose 4  rx 12323 > /dev/null &
+	$rxrsh " /tmp/viamillipede verbose 4  rx 12323 > /dev/null" &
 	vrxpid=$!
 	time_start
-	dd if=/dev/zero bs=1m count=10 | /tmp/viamillipede  checksums threads 16 verbose 4 tx localhost 12323  tx localhost 6666 || exit 2
+	$txrsh "dd if=/dev/zero bs=1m count=10 | /tmp/viamillipede  checksums threads 16 verbose 4 tx $rxhost 12323  tx localhost 6666 " || exit 2
 	time_stop "deaddetect"
 	}
 deaddetect_extended() {
 	pkill viamillipede
-	/tmp/viamillipede verbose 4  rx 12323 > /dev/null &
+	$rxrsh " /tmp/viamillipede verbose 4  rx 12323  > /dev/null " &
 	vrxpid=$!
 	time_start
-	dd if=/dev/zero bs=1m count=3000 | /tmp/viamillipede checksums threads 16 verbose 4 tx localhost 12323  tx localhost 6666 || exit 3
+	$txrsh "dd if=/dev/zero bs=1m count=1024 | /tmp/viamillipede checksums threads 16 verbose 4 tx $rxhost 12323  tx localhost 6666" || exit 3
 	time_stop "deaddetect_extended"
 }
 
@@ -182,6 +147,7 @@ time_stop()  {
 
 zsend_shunt () {
 	#provide a reference for how fast the storage is, and what the pipe capability is
+	# actually we just wait on md5 mosttly
 	time_start
 	$txrsh "zfs send $txpool/$txdataset@initial > /dev/null"
 	time_stop zsend_shunt
@@ -206,8 +172,6 @@ check_output( ){
 	fi
 }
 setup_smoke() {
-	txhost="localhost"
-	rxhost=$txhost
 	rxport=12324
 	rxcommand=" | md5 " 
 	verb=4
@@ -219,39 +183,21 @@ setup_smoke() {
 	chaos=" chaos 1050"
 	badcrypto=" /usr/bin/openssl enc -aes-128-cbc -k bad_pass -S 5A "
 	expected_md5=`$payload_generator | $badcrypto | md5  `
-	txrsh="ssh $txhost "
-	rxrsh="ssh $rxhost "
-	install_bin
 	smoke "$payload_generator | $badcrypto" " $rxcommand " $verb $thread_count
 	#failcase smoke "$payload_generator " " $rxcommand " $verb $thread_count
 	check_output
 }
 
+
+
 setup_grand() {
-	txhost="kaylee.a.aeria.net"
 	txpool="dozer"
 	txdataset="payloads"
 	txsnapshot="intial"
-	rxhost="mal.a.aeria.net"
-	rxhost2="192.168.238.1"
-	rxhost3="192.168.238.2"
-	rxhost4="192.168.238.3"
-	rxhost5="192.168.238.4"
-	rxhost6="192.168.238.5"
-	rxhost7="192.168.238.6"
-	rxhost8="192.168.238.8"
-	rxhost9="192.168.238.9"
-	rxport=12323
-	rxhost_graph="tx $rxhost2 $rxport tx $rxhost3 $rxport tx $rxhost4 $rxport \
-              tx $rxhost5 $rxport tx $rxhost6 $rxport tx $rxhost7 $rxport tx $rxhost8 $rxport \
-              tx $rxhost9 $rxport tx $rxhost $rxport "
-	txrsh="ssh root@$txhost "
-	rxrsh="ssh root@$rxhost "
 	time_start 
 	$txrsh "true"
 	time_stop trvialcommand
 	#makepayloads
-	install_bin 
 	zsend_shunt
 	# populate expectedmd5
 	zsend_dd_shunt
@@ -267,14 +213,37 @@ setup_grand() {
 	#$cleanpayloadds
 }
 
+setup_rxhostgraph() {
+	rxhost2="192.168.238.1"
+	rxhost3="192.168.238.2"
+	rxhost4="192.168.238.3"
+	rxhost5="192.168.238.4"
+	rxhost6="192.168.238.5"
+	rxhost7="192.168.238.6"
+	rxhost8="192.168.238.8"
+	rxhost9="192.168.238.9"
+	rxport=12323
+	rxhost_graph="tx $rxhost2 $rxport tx $rxhost3 $rxport tx $rxhost4 $rxport \
+              tx $rxhost5 $rxport tx $rxhost6 $rxport tx $rxhost7 $rxport tx $rxhost8 $rxport \
+              tx $rxhost9 $rxport  "
+}
 setup_common(){
+	txhost="kaylee.a.aeria.net"
+	rxhost="mal.a.aeria.net"
 	txrsh="ssh root@$txhost "
 	rxrsh="ssh root@$rxhost "
+	setup_rxhostgraph
+	install_bin
 }
 
-tiny
-hotpath
-#ncref
-deaddetect
-deaddetect_extended
+setup_default() {
+	setup_checkphrase
+	tiny
+	setup_hotpath
+	ncref
+	deaddetect
+	deaddetect_extended
+	setup_grand
+}
+setup_common
 setup_$which_test

@@ -1,5 +1,6 @@
 #include "worker.h"
 extern int gchecksums;
+extern char* gcheckphrase;
 
 
 int dispatch_idle_worker ( struct txconf_s * txconf ) {
@@ -150,9 +151,10 @@ int tx_tcp_connect_next ( struct txconf_s *  txconf  ) {
 	); 
 }
 
+extern char * gcheckphrase;
 int tx_start_net ( struct txworker_s *txworker ) {
-	char hellophrase[]="yoes";
-	const char checkphrase[]="ok";
+	///XXXXXchar hellophrase[]="yoes";
+	const char okphrase[]="ok";
 	int retcode;
 	char readback[2048]; 
 	
@@ -199,16 +201,16 @@ int tx_start_net ( struct txworker_s *txworker ) {
 	can the remote end talk? 
 	this is lame  but rudimentary q/a session will assert that the tcp stream is able to bear traffic
 	*/
-	whisper ( 18, "txw:%i send yoes\n", txworker->id);
-	retcode = write (txworker->sockfd, hellophrase, 4); 
-	checkperror ( "tx: write fail"); 
+	whisper ( 18, "txw:%i send checkphrase:%s\n", txworker->id, gcheckphrase);
+	retcode = write (txworker->sockfd, gcheckphrase, 4); 
+	checkperror ( "tx: phrase write fail"); 
 	whisper ( 18, "txw:%i expect ok \n", txworker->id);
 	retcode = read (txworker->sockfd, &readback, 2); 
 	checkperror ("tx: read fail"); 
-	if  ( bcmp ( checkphrase, readback, 2 ) != 0 )  {
-		whisper ( 5, "txw: %i checkphrase failure readlen:%i",  txworker->id, retcode ); 
+	if  ( bcmp ( okphrase, readback, 2 ) != 0 )  {
+		whisper ( 5, "txw: %i expected ok failure readlen:%i",  txworker->id, retcode ); 
 	}
-	assert ( bcmp ( checkphrase, readback, 2 ) == 0 ); 
+	assert ( bcmp ( okphrase, readback, 2 ) == 0 ); 
 	whisper ( 13, "txw:%i online fd:%i\n", txworker->id, txworker->sockfd);
 	txworker->writeremainder=-88; 
 	txstatus (txworker->txconf_parent,7); 
@@ -415,5 +417,5 @@ void tx (struct txconf_s * txconf) {
 	whisper ( 2, "all complete for %lu(bytes) in ",txconf->stream_total_bytes); 
 	u_long usecbusy = stopwatch_stop( &(txconf->ticker),2 );
 	//bytes per usec - thats interesting   ~== to mbps
-	whisper (1, " %8.4f Mbps\n" , ( txconf->stream_total_bytes  / ( 1.0 * usecbusy  ))    );
+	whisper (1, " %05.3f MBps\n" , ( txconf->stream_total_bytes  / ( 1.0 * usecbusy  ))    );
 }

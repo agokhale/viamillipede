@@ -13,7 +13,7 @@ BINDIR= /usr/local/bin
 MANDIR= /usr/local/man/man
 MK_DEBUG_FILES= no
 SHAREDIR= ""
-CFLAGS += -Dvmpd_strict
+#this is now a runtime checksums flag CFLAGS += -Dvmpd_strict
 
 PROG= viamillipede
 SRCS= plumbing.c tx.c rx.c viamillipede.c

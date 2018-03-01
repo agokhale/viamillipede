@@ -13,7 +13,6 @@ Viamillipede is client and server program built to improve network pipe transpor
           + double serial penalty, note latent mistake  causing 1B reads
           + desperately superstitious 
      + `# replcmd = '%s%s/usr/local/bin/pipewatcher $$ | %s "%s/sbin/zfs receive -F -d \'%s\' && echo Succeeded"' % (compress, throttle, sshcmd, decompress, remotefs)
- `
           + ssh is not the tool for every situation 
 	  + fixed pipeline is not tuned for any system
 	  + keep interpreted(y) lanuages out of plumbing
@@ -44,6 +43,7 @@ Viamillipede is client and server program built to improve network pipe transpor
 + Intelligent Traffic Shaping:
      + Steer traffic to preferred interfaces.
      + Dynamically use faster destinations if preferred interfaces are clogged.
+     + Return traffic is limited to ACK's only to indicate correct operations
 + Make additional 'sidechain' compression/crypto pipeline steps parallel. `(*)`
      + hard due to unpredictable buffer size dynamics
      + sidechains could include any reversable pipe transparent program
@@ -61,8 +61,11 @@ Viamillipede is client and server program built to improve network pipe transpor
      + very long lived TCP sessions are delicate things;
      + Your NOC wants to do maintenance and you must have a week of pipeline to push
      + restart broken legs on alternate connections automatically
-     + self tuning worker count, side chain, link choices and buffer sizes, Genetic optimization topic?
-     + checksums
+     + bypass dead links at startup; retry them a little for dribbly network starts
+     + self tuning worker count, side chain, link choices and buffer sizes, Genetic optimization topic? `(*)`
+     + checksums, not needed, but it's part of the test suite, use the 'checksums' transmitter flag to activate
+     + error injection via tx chaos <seed> option - break the software in weird ways,  mostly for the test suite
+     + programmable checkphrase  uses a 4 charactor checkphrase to avoid confusion rather than provide strong authenticaion
 
 `(*)` denotes work in progress, because "hard * ugly > time"
 
