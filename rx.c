@@ -179,7 +179,7 @@ void rxlaunchworkers ( struct rxconf_s * rxconf ) {
 		retcode = pthread_create ( 
 			&rxconf->workers[worker_cursor].thread, 
 			NULL, //attrs - none
-			(void *(* _Nonnull)(void *))&rxworker,
+			(void *)&rxworker,
                         &(rxconf->workers[worker_cursor])
 		); 
 		whisper ( 18, "rxw:%02i threadlaunched\n", worker_cursor); 

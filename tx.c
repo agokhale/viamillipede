@@ -308,13 +308,12 @@ void txlaunchworkers ( struct txconf_s * txconf) {
 		//allocate before thread launch
 		txconf->workers[worker_cursor].buffer = calloc ( 1,(size_t) kfootsize ); 
 		assert (txconf->workers[worker_cursor].buffer != NULL && "insufficient memory up front" ); 
-		//digression: pthreads murders all possible kittens stored in  argument types
+		//digression: pthreads murders all possible kittens stored in argument types
 		checkperror ("nuicance pthread error launch"); 
 		ret = pthread_create ( 
 			&(txconf->workers[worker_cursor].thread ),
 			NULL ,
-			//clang suggest this gibberish, why question?
-			(void *(* _Nonnull)(void *))&txworker_sm,  
+			(void*)&txworker_sm,  
 			&(txconf->workers[worker_cursor]) 
 			);
 		checkperror ("pthread launch"); 

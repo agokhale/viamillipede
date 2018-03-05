@@ -100,7 +100,7 @@ setup_checkphrase() {
 	pkill viamillipede
 	$rxrsh "/tmp/viamillipede verbose 3 checkphrase tuuW  rx 12323 > /dev/null" &
 	vrxpid=$!
-	#this fails; let it, dont die
+	echo this fails. let it. dont die
 	$txrsh " echo 'wat' | /tmp/viamillipede threads 3 verbose 3 checkphrase nope tx $rxhost 12323 " || true
 	}
 tiny() {
@@ -239,11 +239,11 @@ setup_common(){
 setup_default() {
 	setup_checkphrase
 	tiny
-	setup_hotpath
 	ncref
 	deaddetect
 	deaddetect_extended
 	setup_grand
+	setup_hotpath
 }
 setup_common
 setup_$which_test
