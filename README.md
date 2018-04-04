@@ -59,15 +59,15 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 
 ### Simple operation:
 + Start receiver with rx <portnum> and provide a stdout destination 
-	+``` viamillipede rx 8834 > /tmp/despair  ```
++``` viamillipede rx 8834 > /tmp/despair  ```
 + Start transmitter with  tx <receiver_host> <portnum> and provide a stdin source
-	+ ``` cat /tmp/Osymandias  | viamillipede tx host1.yoyodyne.com 8834  ```
++ ``` cat /tmp/Osymandias  | viamillipede tx host1.yoyodyne.com 8834  ```
 	     
 ### Use case with zfs send/recv:
 + Start transmitter with  tx <receiver_host> <portnum>  and provide stdin from zfs send	
-	+ ``` zfs send dozer/visage | viamillipede tx foriegn.shore.net 8834  ```
++ ``` zfs send dozer/visage | viamillipede tx foriegn.shore.net 8834  ```
 + Start receiver  with rx <portnum>  and ppipe output to zfs recv
-	+ ``` viamillipede rx 8834   | zfs recv trinity/destset ```
++ ``` viamillipede rx 8834   | zfs recv trinity/destset ```
 	
 ### Options:
 + `rx <portnum> ` Become a reciever. Write output to stdout. 
@@ -79,6 +79,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 		+ varying layer3 routes ( multihomed transport )
 	+ Use the preferred link.  Should you saturate it,  fill the next available link.
 	+ Provide tx multiple times to describe the transport graph.
+	+ Provide tx the same number of times as the thread count to precisely distribute traffic on specific links
 ``` viamillipede \
 	tx host1.40g-infiniband.yoyodyne.com\
 	tx host1a.40g-infiniband.yoyodyne.com\
@@ -89,17 +90,19 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 ```
 + verbose  <0-20+>, 
 	+ transmitter or receiver
-	``` viamillipede rx 8834   verbose 5 ```
+	+ ``` viamillipede rx 8834   verbose 5 ```
 + threads <1-16> control worker thread count 
-	+ (only on transmitter)
-	+ 16 is statically compiled in, higher thread count is unlikely to be productive.
-	+``` viamillipede tx foreign.shore.net 8834 threads 16 ```
+	+ set only on transmitter
+	+ tune this value to suit your need
+	+ An upper limit of 16 is statically compiled in, higher thread count is unlikely to be productive. 
+	+ A minimum of 3 threads is encoraged to preserve performance and resiliancy. 
+	+ ``` viamillipede tx foreign.shore.net 8834 threads 16 ```
 + checksum (only on transmitter). 
-	+This is probably not required as the tcp stack and network layer will perform this autmatically
+	+ This is probably not required as the tcp stack and network layer will perform this autmatically
 	+ part of the verification suite or for the paranoid user
 	+ uses a fast, not particularly stellar, method
-	+transmitter only option.
-	+``` viamillipede tx foreign.shore.net 8834 checksum ```
+	+ transmitter only option.
+	+ ``` viamillipede tx foreign.shore.net 8834 checksum ```
 + chaos <clock divider> add error via chaos
 	+ transmitter only option
 	+ could be used to rebalance network links
