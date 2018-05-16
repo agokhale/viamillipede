@@ -5,7 +5,7 @@ Fast, resiliant, network transparent pipe tranport.
 Viamillipede is client/server program built to improve pipe transport across networks by using multiple TCP sessions. It demultiplexes stdin into multiple buffered TCP connectons and then terminates the connections into stdout on another host. Order is guaranteed and the pipe is transparent to the source/sink programs. It is as simple to use as Netcat and can generate large throughputs.
 
 #### Problems With existing approaches:
-TCP connections are fragile and IP employs best effort delivery to preserve its ecomony.  TCP was not engineered for performance, resiliance or longevity for a single flow.  Relying on a single TCP connection to succeed or perform is not defendable in software however there are many applications where losing a TCP session is expensive.
+TCP connections are fragile and IP employs best effort delivery to preserve its economy.  TCP was not engineered for performance, resiliance or longevity for a single flow.  Relying on a single TCP connection to succeed or perform is not defendable in software however there are many applications where losing a TCP session is expensive.
 
 ### typical pathology:
 ![alt text](series_is_trouble.svg "serialized operations show resistance")
