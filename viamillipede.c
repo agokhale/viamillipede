@@ -19,7 +19,9 @@ char *gcheckphrase;
 int main(int argc, char **argv) {
 
   int arg_cursor = 0;
-  int mode = -1;
+#define MODE_TX 2
+#define MODE_RX 4
+  int mode = 0;
   int users_input_port;
   struct txconf_s txconf;
   struct rxconf_s rxconf;
@@ -42,7 +44,7 @@ int main(int argc, char **argv) {
              "port number should be 0-USHRT_MAX");
       rxconf.port = (short)users_input_port;
       whisper(3, " being a server at port %i \n\n ", rxconf.port);
-      mode = 0; // xxx enums
+      mode |= MODE_RX;
       checkperror(" main nuiscance -1 ");
     }
     if (strcmp(argv[arg_cursor], "tx") == 0) {
@@ -67,7 +69,7 @@ int main(int argc, char **argv) {
               txconf.target_ports[txconf.target_port_count].port);
       txconf.target_port_count++;
       checkperror(" main nuiscance  port err ");
-      mode = 1;
+      mode |= MODE_TX;
     }
     if (strcmp(argv[arg_cursor], "threads") == 0) {
       assert(++arg_cursor < argc && "threads needs <numeber> arguments");
@@ -104,17 +106,23 @@ int main(int argc, char **argv) {
     arg_cursor++;
   }
   checkperror("main nuiscance");
-
-  switch (mode) {
-  case 1:
+  DTRACE_PROBE(viamillipede, init);
+  if (mode & MODE_RX)
+    rx(&rxconf); // rx must preceed
+  if (mode & MODE_TX)
     tx(&txconf);
-    break;
-  case 0:
-    rx(&rxconf);
-    break;
-  default:
-    assert(-1 && " mode incorrect, internal error");
-    break;
+  int rxpoll_done = 0;
+  int txpoll_done = 0;
+  while (txpoll_done + rxpoll_done < 2) {
+    if (mode & MODE_TX)
+      txpoll_done = tx_poll(&txconf);
+    else
+      txpoll_done = 1;
+    if (mode & MODE_RX)
+      rxpoll_done = rx_poll(&rxconf);
+    else
+      rxpoll_done = 1;
+    usleep(333);
   }
   exit(0);
 }

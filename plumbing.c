@@ -156,6 +156,7 @@ int tcp_accept(struct sockaddr_in *sa, int socknum) {
   whisper(17, "   accept sockid: %i\n", socknum);
   out_sockfd = accept(socknum, (struct sockaddr *)sa, &socklen);
   whisper(13, "   socket %i accepted to fd:%i \n", socknum, out_sockfd);
+  DTRACE_PROBE1(viamillipede, worker__connected, out_sockfd);
   checkperror("acceptor");
   return (out_sockfd);
 }

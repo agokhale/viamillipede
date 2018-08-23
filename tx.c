@@ -138,6 +138,7 @@ int txpush(struct txworker_s *txworker) {
     txworker->pkt.size = 0; /// can't distroythis  un less  we are successful
     txworker->state = 'i';  // idle ok
   } else {
+    DTRACE_PROBE(viamillipede, leg__drop);
     txworker->state =
         'x'; // dead  do not transmit more; save state and do it again
     whisper(7, "rxw:%02i is dead\n", txworker->id);
@@ -153,13 +154,15 @@ int tx_tcp_connect_next(struct txconf_s *txconf) {
   whisper(5, "tx: chosen target %s %d\n",
           txconf->target_ports[txconf->target_port_cursor].name,
           txconf->target_ports[txconf->target_port_cursor].port);
+  DTRACE_PROBE2(viamillipede, worker__connect,
+                txconf->target_ports[txconf->target_port_cursor].name,
+                txconf->target_ports[txconf->target_port_cursor].port);
   return (tcp_connect(txconf->target_ports[chosen_target].name,
                       txconf->target_ports[chosen_target].port));
 }
 
 extern char *gcheckphrase;
 int tx_start_net(struct txworker_s *txworker) {
-  /// XXXXXchar hellophrase[]="yoes";
   const char okphrase[] = "ok";
   int retcode;
   char readback[2048];
@@ -181,7 +184,7 @@ int tx_start_net(struct txworker_s *txworker) {
     pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
 
     pthread_mutex_lock(&(txworker->mutex));
-    usleep(100 * 1000);
+    usleep(300 * 1000);
     whisper(5, "txw:%02ireconnecting\n", txworker->id);
     txworker->sockfd = tx_tcp_connect_next(txworker->txconf_parent);
     // detect a dead connection and move on to the next port in the target map
@@ -265,7 +268,7 @@ void txworker_sm(struct txworker_s *txworker) {
     /* valid states:
             E: uninitialized
             f: faulted; unble to connect
-            a: premable; we think we are talking to  a villipede server
+            a: preamble; we think we are talking to  a villipede server
             c: connecting; idle when connected ; die if  we are done or cant
        connected to anything
             d: dispatched buffer is loaded; now send it
@@ -279,6 +282,7 @@ void txworker_sm(struct txworker_s *txworker) {
       break; // idle
     restartcase:
     case 'd':
+      DTRACE_PROBE(viamillipede, leg__tx)
       if (txpush(txworker) == 0) {
         // retry  this
         whisper(3, "txw:%02i socket failed, scheduling retry leg:%lu\n",
@@ -343,6 +347,10 @@ void txlaunchworkers(struct txconf_s *txconf) {
     // 10ms standoff  to increase the likelyhood that PCBs are available on the
     // rx side
   }
+  ret = pthread_create(&(txconf->ingest_thread), NULL,
+                       (void *)/*puppied killed */ &txingest, txconf);
+  checkperror("ingest thread launch");
+  whisper(15, "tx workers launched ");
   txstatus(txconf, 5);
 }
 
@@ -359,7 +367,7 @@ void txstatus(struct txconf_s *txconf, int log_level) {
   }
   whisper(log_level, "\n");
 }
-void txbusyspin(struct txconf_s *txconf) {
+int tx_poll(struct txconf_s *txconf) {
   // wait until all legs are pushed; called after ingest is complete
   // if there are launche/dispatched /pushing workers; hang here
   int done = 0;
@@ -383,6 +391,11 @@ void txbusyspin(struct txconf_s *txconf) {
     done = (busy_workers == 0);
   }
   whisper(6, "\ntx: all workers idled after %i spins\n", busy_cycles);
+  whisper(2, "all complete for %lu(bytes) in ", txconf->stream_total_bytes);
+  u_long usecbusy = stopwatch_stop(&(txconf->ticker), 2);
+  // bytes per usec - thats interesting   ~== to mBps
+  whisper(1, " %05.3f MBps\n", (txconf->stream_total_bytes / (1.0 * usecbusy)));
+  return done;
 }
 struct txconf_s *gtxconf;
 void wat() {
@@ -435,10 +448,4 @@ void tx(struct txconf_s *txconf) {
   init_workers(txconf);
   checkperror(" nuicance tx 3");
   txlaunchworkers(txconf);
-  txingest(txconf);
-  txbusyspin(txconf);
-  whisper(2, "all complete for %lu(bytes) in ", txconf->stream_total_bytes);
-  u_long usecbusy = stopwatch_stop(&(txconf->ticker), 2);
-  // bytes per usec - thats interesting   ~== to mbps
-  whisper(1, " %05.3f MBps\n", (txconf->stream_total_bytes / (1.0 * usecbusy)));
 }

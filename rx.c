@@ -20,6 +20,7 @@ void rxworker(struct rxworker_s *rxworker) {
     rxworker->sockfd = tcp_accept(&(rxworker->rxconf_parent->sa),
                                   rxworker->rxconf_parent->socknum);
     whisper(5, "rxw:%02i accepted fd:%i \n", rxworker->id, rxworker->sockfd);
+    DTRACE_PROBE1(viamillipede, worker__connected, rxworker->sockfd);
     pthread_mutex_unlock(&rxworker->rxconf_parent->sa_mutex);
     whisper(16, "rxw:%02i fd:%i expect %s\n", rxworker->id, rxworker->sockfd,
             gcheckphrase);
@@ -160,6 +161,7 @@ void rxworker(struct rxworker_s *rxworker) {
           remainder -= writesize;
         }
         checkperror("write buffer");
+        DTRACE_PROBE(viamillipede, leg__rx);
         readlen = readsize = -111;
         if (pkt.opcode == end_of_millipede) {
           whisper(5, "rxw:%02i caught 0x%x done with last frame\n",
@@ -216,16 +218,17 @@ void rxlaunchworkers(struct rxconf_s *rxconf) {
   } while (worker_cursor < (kthreadmax));
   whisper(7, "rx: worker group launched\n");
 }
+int rx_poll(struct rxconf_s *rxconf) {
+  /** return true if done */
+  int ret_done;
+  pthread_mutex_lock(&(rxconf->rxmutex));
+  ret_done = rxconf->done_mbox;
+  pthread_mutex_unlock(&(rxconf->rxmutex));
+  return ret_done;
+}
 void rx(struct rxconf_s *rxconf) {
   pthread_mutex_init(&(rxconf->sa_mutex), NULL);
   pthread_mutex_init(&(rxconf->rxmutex), NULL);
   rxconf->done_mbox = 0;
   rxlaunchworkers(rxconf);
-  while (!rxconf->done_mbox) {
-    pthread_mutex_unlock(&(rxconf->rxmutex));
-    usleep(10000);
-    // XXX  join or  hoist out the lame pthread_exits();
-    pthread_mutex_lock(&(rxconf->rxmutex));
-  }
-  whisper(4, "rx: done\n");
 }
