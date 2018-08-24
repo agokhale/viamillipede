@@ -14,6 +14,7 @@ int gverbose = 0;
 unsigned long gchaos = 0;
 unsigned long gchaoscounter = 0;
 int gchecksums = 0;
+int gcharmode = 0;
 char *gcheckphrase;
 
 int main(int argc, char **argv) {
@@ -102,6 +103,10 @@ int main(int argc, char **argv) {
       assert(++arg_cursor < argc && "checkphrase  needs  char[] ");
       gcheckphrase = argv[arg_cursor];
       whisper(11, "checkphrase set to %s", gcheckphrase);
+    }
+    if (strcmp(argv[arg_cursor], "charmode") == 0) {
+      gcharmode=1;
+      whisper(11, "charmode active");
     }
     arg_cursor++;
   }

@@ -14,14 +14,17 @@ int chaos_fail() {
   return (0);
 }
 
-ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size) {
-  // forcefully read utill a bufffer completes or EOF
-  // XXX replace with kqueue - perhaps
+ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
+  /** forcefully read utill a bufffer completes or EOF
+  returns the output size
+  charmode: be forgiving for smalll reads if 1
+  XXX replace with kqueue - perhaps
+  */
   int remainder = size;
   u_char *dest_cursor = dest;
   ssize_t accumulator = 0;
   ssize_t readsize;
-  int fuse = 1055; // don't spin  forever
+  int fuse = 55; // don't spin  forever
   int sleep_thief = 0;
   assert(dest != NULL);
   do {
@@ -60,7 +63,9 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size) {
         sleep_thief = 0;
       }
       usleep(sleep_thief);
-      if (readsize < 1) { // short reads  are the end
+      if (readsize < 1 || charmode) {
+        // short reads  are the end
+        // alternately, exit if we are in char mode
         break;
       }
     }

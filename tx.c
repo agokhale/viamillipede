@@ -1,5 +1,6 @@
 #include "worker.h"
 extern int gchecksums;
+extern int gcharmode;
 extern char *gcheckphrase;
 
 int dispatch_idle_worker(struct txconf_s *txconf) {
@@ -57,18 +58,18 @@ void txingest(struct txconf_s *txconf) {
     int worker = dispatch_idle_worker(txconf);
     assert((txconf->workers[worker].buffer) != NULL);
     readsize = bufferfill(in_fd, (u_char *)(txconf->workers[worker].buffer),
-                          kfootsize);
+                          kfootsize, gcharmode);
     whisper(8, "\ntxw:%02i read leg %i : fd:%i siz:%i\n", worker,
             ingest_leg_counter, in_fd, kfootsize);
     assert(readsize <= kfootsize);
     if (readsize > 0) {
-      // find the idle worker , lock it and dispatch as seprarte calls --
+      // find the idle worker , lock it and dispatch as separate calls --
       // perhaps
       txconf->workers[worker].pkt.size = readsize;
       txconf->workers[worker].pkt.leg_id = ingest_leg_counter;
       txconf->workers[worker].pkt.opcode = feed_more;
       if (gchecksums) {
-        // expensive this code should only be used for developmend
+        // expensive this code should only be used for development
         txconf->workers[worker].pkt.checksum =
             mix(saved_checksum + ingest_leg_counter,
                 txconf->workers[worker].buffer, readsize);
@@ -82,6 +83,7 @@ void txingest(struct txconf_s *txconf) {
       whisper(4, "txingest no more stdin, send shutdown");
       pthread_mutex_lock(&(txconf->mutex));
       txconf->done = 1;
+      txconf->input_eof = 1;
       pthread_mutex_unlock(&(txconf->mutex));
       int worker = dispatch_idle_worker(txconf);
       txconf->workers[worker].pkt.size = 0;
@@ -367,6 +369,12 @@ void txstatus(struct txconf_s *txconf, int log_level) {
   }
   whisper(log_level, "\n");
 }
+void tx_final_words(struct txconf_s *txconf) {
+  whisper(2, "all complete for %lu(bytes) in ", txconf->stream_total_bytes);
+  u_long usecbusy = stopwatch_stop(&(txconf->ticker), 2);
+  // bytes per usec - thats interesting   ~== to mBps
+  whisper(1, " %05.3f MBps\n", (txconf->stream_total_bytes / (1.0 * usecbusy)));
+}
 int tx_poll(struct txconf_s *txconf) {
   // wait until all legs are pushed; called after ingest is complete
   // if there are launche/dispatched /pushing workers; hang here
@@ -390,12 +398,13 @@ int tx_poll(struct txconf_s *txconf) {
     }
     done = (busy_workers == 0);
   }
-  whisper(6, "\ntx: all workers idled after %i spins\n", busy_cycles);
-  whisper(2, "all complete for %lu(bytes) in ", txconf->stream_total_bytes);
-  u_long usecbusy = stopwatch_stop(&(txconf->ticker), 2);
-  // bytes per usec - thats interesting   ~== to mBps
-  whisper(1, " %05.3f MBps\n", (txconf->stream_total_bytes / (1.0 * usecbusy)));
-  return done;
+  whisper(18, "\ntx: all workers idled after %i spins\n", busy_cycles);
+  if (done && txconf->input_eof) {
+    tx_final_words(txconf);
+    return 1;
+  }
+
+  return 0;
 }
 struct txconf_s *gtxconf;
 void wat() {
@@ -444,6 +453,7 @@ void tx(struct txconf_s *txconf) {
   pthread_mutex_lock(&(txconf->mutex));
   checkperror(" nuicance tx 2");
   txconf->done = 0;
+  txconf->input_eof = 0;
   pthread_mutex_unlock(&(txconf->mutex));
   init_workers(txconf);
   checkperror(" nuicance tx 3");
