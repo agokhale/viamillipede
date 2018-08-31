@@ -6,7 +6,6 @@ extern char *gcheckphrase;
 int dispatch_idle_worker(struct txconf_s *txconf) {
   int retcode = -1;
   txstatus(txconf, 5);
-  int spins = 0;
   int sleep_thief = 0;
   while (retcode < 0) {
     pthread_mutex_lock(&(txconf->mutex));
@@ -14,19 +13,20 @@ int dispatch_idle_worker(struct txconf_s *txconf) {
          (worker_cursor < txconf->worker_count) && (retcode < 0);
          worker_cursor++) {
       if (txconf->workers[worker_cursor].state == 'i') {
+        // we have a idle volunteer. winner!
         retcode = worker_cursor;
+        // if there are any idle workers, erase memory of sleeping
         sleep_thief = 0;
-        spins = 0;
       }
     }
     assert(retcode < kthreadmax);
     pthread_mutex_unlock(&(txconf->mutex));
     if (retcode < 0) {
-      txstatus(txconf, 29);
-      spins++;
-      whisper(91, "no workers available backing off spins: %i\n", spins);
       sleep_thief++;
+      // investigate backoffs that are smartr. probably not helpful
       // sleep_thief <<= 1;
+      // sleeping here indicates we do not have enough workers
+      //   or enough througput on the network
       usleep(sleep_thief);
     }
   } // we have a winner, return it
@@ -243,7 +243,6 @@ void txworker_sm(struct txworker_s *txworker) {
   int done = 0;
   int retcode = -1;
   char local_state = 0;
-  int state_spin = 0;
   int sleep_thief = 0;
   pthread_mutex_init(&(txworker->mutex), NULL);
   retcode = tx_start_net(txworker);
@@ -272,16 +271,15 @@ void txworker_sm(struct txworker_s *txworker) {
     pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
     switch (local_state) {
     /* valid states:
-            E: uninitialized
-            f: faulted; unble to connect
-            a: preamble; we think we are talking to  a villipede server
-            c: connecting; idle when connected ; die if  we are done or cant
-       connected to anything
-            d: dispatched buffer is loaded; now send it
-            Pp: pushing
-            i: idle but connected
-            x: disconnected, still bearing a buffer. attempt reconnection
-            n: not yet connected,  new no buffer ??? connect => idle
+    E: uninitialized
+    f: faulted; unble to connect
+    a: preamble; we think we are talking to  a villipede server
+    c: connecting; idle when connected; die if we are done or can't connect
+    d: dispatched buffer is loaded; now send it
+    Pp: pushing
+    i: idle but connected
+    x: disconnected, still bearing a buffer. attempt reconnection
+    n: not yet connected,  new no buffer ??? connect => idle
 
     */
     case 'i':
@@ -306,12 +304,6 @@ void txworker_sm(struct txworker_s *txworker) {
       break;
     default:
       assert(-1 && "bad zoot");
-    }
-    state_spin++;
-    if ((state_spin % 30000) == 0 && (txworker->state == 'i')) {
-      // txstatus ( txworker -> txconf_parent,10 ) ;
-      whisper(9, "txw:%02i is lonely after %i spins \n", txworker->id,
-              state_spin);
     }
     sleep_thief++; // this Looks crazy ; but it's good for 30%
     // XXX back off tuning tbd
@@ -361,12 +353,12 @@ void txlaunchworkers(struct txconf_s *txconf) {
 }
 
 void txstatus(struct txconf_s *txconf, int log_level) {
-  whisper(log_level, "\nstate:leg-remainder(k)\n");
+  whisper(log_level, "\nstate:leg-remainder(k)");
   for (int i = 0; i < txconf->worker_count; i++) {
     if (i % 8 == 0) {
-      whisper(log_level, " %02i \n", i);
+      whisper(log_level, "\n");
     }
-    whisper(log_level, "%c:%lu-%i\t", txconf->workers[i].state,
+    whisper(log_level, "%c:%lu(%i)\t", txconf->workers[i].state,
             txconf->workers[i].pkt.leg_id,
             (txconf->workers[i].writeremainder) >> 10 // kbytes are sufficient
             );

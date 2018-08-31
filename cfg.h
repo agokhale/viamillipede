@@ -39,7 +39,7 @@ struct millipacket_s {
                           // sequencer for the whole session
   // this may result in max transmission size of klegsize * ( unsigned int max )
   // XXX debug  sequencer rollover condition if this is a problem
-  unsigned long size; // <= kfootsize
+  unsigned long size; // <= kfootsize;  how much user payload is in this packet
   unsigned long
       checksum; //  checksum = mix ( leg_id, opcode, sample ( payload) );
   int opcode;

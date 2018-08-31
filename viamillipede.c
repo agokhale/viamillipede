@@ -26,11 +26,14 @@ int main(int argc, char **argv) {
   int users_input_port;
   struct txconf_s txconf;
   struct rxconf_s rxconf;
+  struct ioconf_s ioconf;
   gcheckphrase = "yoes";
   (argc > 1) ?: usage();
   txconf.worker_count = 16;
   txconf.target_port_count = 0;
   txconf.target_port_cursor = 0;
+  ioconf.terminate_port = 0;
+  ioconf.initiate_port = 0;
   checkperror(" main nuiscance -0 ");
   while (arg_cursor < argc) {
     whisper(30, "  arg: %d, %s\n", arg_cursor, argv[arg_cursor]);
@@ -54,7 +57,6 @@ int main(int argc, char **argv) {
       assert(strlen(argv[arg_cursor]) > 0 && "hostname seems fishy");
       checkperror(" main nuiscance  port err0 ");
       txconf.target_ports[txconf.target_port_count].name = argv[arg_cursor];
-      // XXX NDEBUG wil break
       checkperror(" main nuiscance  port err1 ");
       arg_cursor++;
       assert(arg_cursor < argc &&
@@ -104,14 +106,35 @@ int main(int argc, char **argv) {
       gcheckphrase = argv[arg_cursor];
       whisper(11, "checkphrase set to %s", gcheckphrase);
     }
+    // terminate 5656
+    // command setup listen for connecton at port
+    if (strcmp(argv[arg_cursor], "terminate") == 0) {
+      assert(++arg_cursor < argc && "terminate  needs  port ");
+      ioconf.terminate_port = atoi(argv[arg_cursor]);
+      whisper(11, "termport set to %d", ioconf.terminate_port);
+    }
+    // initiate hathor 5656
+    // command setup start connecton at port
+    if (strcmp(argv[arg_cursor], "initiate") == 0) {
+      arg_cursor++;
+      assert(strlen(argv[arg_cursor]) > 0 && "hostname seems fishy");
+      ioconf.initiate_host = argv[arg_cursor];
+      arg_cursor++;
+      ioconf.initiate_port = atoi(argv[arg_cursor]);
+      whisper(11, "initiator port set to %d", ioconf.initiate_port);
+    }
     if (strcmp(argv[arg_cursor], "charmode") == 0) {
-      gcharmode=1;
+      gcharmode = 1;
       whisper(11, "charmode active");
     }
     arg_cursor++;
   }
   checkperror("main nuiscance");
+  assert(!(ioconf.terminate_port > 0 && ioconf.initiate_port > 0) &&
+         "can't initiate and termimate in parallel");
   DTRACE_PROBE(viamillipede, init);
+  assert(terminate(&txconf, &rxconf, &ioconf) >= 0); // STDIN == 0 and is valid
+  assert(initiate(&txconf, &rxconf, &ioconf) >= 1);
   if (mode & MODE_RX)
     rx(&rxconf); // rx must preceed
   if (mode & MODE_TX)

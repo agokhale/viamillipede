@@ -97,7 +97,7 @@ void rxworker(struct rxworker_s *rxworker) {
         readsize =
             read(rxworker->sockfd, buffer + cursor, MIN(remainder, MAXBSIZE));
         checkperror("rx: read failure\n");
-        if (errno != 0 || readsize == 0) {
+        if (errno != 0 || readsize == 0 || readsize < 0) {
           whisper(4, "rxw:%02i retired due to read len:%i errno:%i\n",
                   rxworker->id, readsize, errno);
           restartme = 1;
@@ -168,7 +168,7 @@ void rxworker(struct rxworker_s *rxworker) {
           whisper(5, "rxw:%02i caught 0x%x done with last frame\n",
                   rxworker->id, pkt.opcode);
           rxworker->rxconf_parent->done_mbox = 1; // XXX xxx
-        } else {
+        } else if (pkt.opcode == feed_more) {
           // the last frame will be empty and have a borken cksum
           if (pkt.checksum) {
 
@@ -183,6 +183,9 @@ void rxworker(struct rxworker_s *rxworker) {
             assert(rx_checksum == pkt.checksum);
             grx_saved_checksum = rx_checksum;
           };
+        } else {
+          whisper(1, "bogus opcode %x", pkt.opcode);
+          assert(-1);
         }
         pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
         rxworker->rxconf_parent
