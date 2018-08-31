@@ -155,8 +155,9 @@ void rxworker(struct rxworker_s *rxworker) {
         int writesize = 0;
         cursor = 0;
         while (remainder) {
-          writesize = write(STDOUT_FILENO, buffer + cursor,
+          writesize = write(rxworker->rxconf_parent->output_fd, buffer + cursor,
                             (size_t)MIN(remainder, MAXBSIZE));
+          assert(writesize > 0);
           cursor += writesize;
           remainder -= writesize;
         }

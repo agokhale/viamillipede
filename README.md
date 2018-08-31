@@ -73,6 +73,10 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 + `rx <portnum> ` Become a reciever. Write output to stdout. 
 + `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host.  Optionally provide tx muliple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources shold inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
 	+ Read stdin and push it over the network. 
+	+ Full duplex, rx and tx may be used simultaneously to provide a transparent pipe. Happy shell throwing!
+		+ Two disinct port numbers are requied, one rx port for each side, with the tx on the other host pointing at the rx
+		+ host1: ./vimaillipede rx  7788 tx host2 9900 charmode
+		+ host2: ./vimaillipede rx  9900 tx host1 7788 charmode
 	+ The source and destination machine may have multiple interfaces and may have:
 		+ varying layer1 media ( ethernet, serial, Infiniband , 1488, Carrier Pidgeon, insects, ntb)
 		+ varying layer2 attachment ( vlan, aggregation )
@@ -88,6 +92,22 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	tx host1.expensive-last-resort.yoyodyne.com
 
 ```
+
++ terminate <port>
+	+ transmitter or receiver, requires full duplex
+	+ Accept a tcp connection
++ initiate <hostname> <port>
+	+ transmitter or receiver, requires full duplex
+	+ Create a tcp socket
+	+ use with terminate to tunnel a full duplex socket, this example tunnels ssh from host1:9022 to host2:22
+```
+		host1: ./vimaillipede rx  7788 tx host2 9900 charmode terminate 9022
+		host2: ./vimaillipede rx  9900 tx host1 7788 charmode initiate localhost 22
+```
+
++ charmode
+	+ transmitter or receiver
+	+ Attempt to deliver any data in the buffer, do not wait for buffers to fill strictly
 + verbose  <0-20+>, 
 	+ transmitter or receiver
 	+ ``` viamillipede rx 8834   verbose 5 ```
@@ -139,7 +159,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
         	+ rot39, od
 	+ xdr/rpc marshalling for architecture independence
  		+ serializing a struct is not ideal
-	+ reverse channel capablity 
+	+ reverse channel capablity  *done 20180830
 		+ millipedesh ? millipederpc?
 		+ specify rx/tx at the same time + fifo?
 		+ is this even a good idea? Exploit generator?

@@ -42,11 +42,10 @@ void start_worker(struct txworker_s *txworker) {
   txstatus(txworker->txconf_parent, 6);
 }
 
-// dump stdin in chunks
-// this is single thread and should use memory at a drastic pace
+// dump <source>/stdin in chunks
+// this is single thread
 void txingest(struct txconf_s *txconf) {
   int readsize;
-  int in_fd = STDIN_FILENO;
   int foot_cursor = 0;
   unsigned long saved_checksum = 0xff;
   int ingest_leg_counter = 0;
@@ -57,10 +56,11 @@ void txingest(struct txconf_s *txconf) {
     pthread_mutex_unlock(&(txconf->mutex));
     int worker = dispatch_idle_worker(txconf);
     assert((txconf->workers[worker].buffer) != NULL);
-    readsize = bufferfill(in_fd, (u_char *)(txconf->workers[worker].buffer),
-                          kfootsize, gcharmode);
+    readsize =
+        bufferfill(txconf->input_fd, (u_char *)(txconf->workers[worker].buffer),
+                   kfootsize, gcharmode);
     whisper(8, "\ntxw:%02i read leg %i : fd:%i siz:%i\n", worker,
-            ingest_leg_counter, in_fd, kfootsize);
+            ingest_leg_counter, txconf->input_fd, kfootsize);
     assert(readsize <= kfootsize);
     if (readsize > 0) {
       // find the idle worker , lock it and dispatch as separate calls --
@@ -111,7 +111,10 @@ int txpush(struct txworker_s *txworker) {
   int writelen = -1;
   int cursor = 0;
   txworker->state = 'a'; // preAmble
-  write(txworker->sockfd, &txworker->pkt, sizeof(struct millipacket_s));
+  int pktwrret =
+      write(txworker->sockfd, &txworker->pkt, sizeof(struct millipacket_s));
+  assert(pktwrret == sizeof(struct millipacket_s) &&
+         "millipacket not written ");
   txworker->writeremainder = txworker->pkt.size;
   assert(txworker->writeremainder <= kfootsize);
   while (txworker->writeremainder && retcode) {
@@ -186,7 +189,7 @@ int tx_start_net(struct txworker_s *txworker) {
     pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
 
     pthread_mutex_lock(&(txworker->mutex));
-    usleep(300 * 1000);
+    usleep((300 * 1000) << (kthreadmax - reconnect_fuse));
     whisper(5, "txw:%02ireconnecting\n", txworker->id);
     txworker->sockfd = tx_tcp_connect_next(txworker->txconf_parent);
     // detect a dead connection and move on to the next port in the target map
@@ -196,6 +199,7 @@ int tx_start_net(struct txworker_s *txworker) {
       whisper(5, "txw:%02i reconnect success fd:%i\n", txworker->id,
               txworker->sockfd);
       errno = 0;
+      reconnect_fuse = kthreadmax;
     }
     reconnect_fuse--;
   }
@@ -321,7 +325,7 @@ void txworker_sm(struct txworker_s *txworker) {
 void txlaunchworkers(struct txconf_s *txconf) {
   int worker_cursor = 0;
   int ret;
-  checkperror("nuicance before launch");
+  checkperror("nuisance before launch");
   while (worker_cursor < txconf->worker_count) {
     txconf->workers[worker_cursor].state = '0'; // unitialized
     txconf->workers[worker_cursor].txconf_parent =
@@ -338,7 +342,7 @@ void txlaunchworkers(struct txconf_s *txconf) {
            "insufficient memory up front");
     // digression: pthreads murders all possible kittens stored in argument
     // types
-    checkperror("nuicance pthread error launch");
+    checkperror("nuisance pthread error launch");
     ret =
         pthread_create(&(txconf->workers[worker_cursor].thread), NULL,
                        (void *)&txworker_sm, &(txconf->workers[worker_cursor]));
@@ -383,8 +387,8 @@ int tx_poll(struct txconf_s *txconf) {
   char instate = 'E'; // error uninitialized
   while (!done) {
     usleep(1000); // e^n backoff?
-    if ((busy_cycles % 100) == 0)
-      txstatus(txconf, 4);
+    // if ((busy_cycles % 100) == 0)
+    //  txstatus(txconf, 4);
     busy_cycles++;
     int busy_workers = 0;
     for (int i = 0; i < txconf->worker_count; i++) {
@@ -442,20 +446,20 @@ void init_workers(struct txconf_s *txconf) {
 void tx(struct txconf_s *txconf) {
   int retcode;
   gtxconf = txconf;
-  checkperror(" nuicance tx 0");
+  checkperror(" nuisance  starting tx");
   // start control channel
   stopwatch_start(&(txconf->ticker));
-  signal(SIGINFO, &wat);
+  signal(SIGINFO, &wat); // XXX this gets weird in fdx mode
   signal(SIGINT, &partingshot);
   signal(SIGHUP, &partingshot);
-  checkperror(" nuicance tx 1");
+  checkperror("nuisance setting signal");
   pthread_mutex_init(&(txconf->mutex), NULL);
   pthread_mutex_lock(&(txconf->mutex));
-  checkperror(" nuicance tx 2");
+  checkperror("nuicance  locking txconf");
   txconf->done = 0;
   txconf->input_eof = 0;
   pthread_mutex_unlock(&(txconf->mutex));
   init_workers(txconf);
-  checkperror(" nuicance tx 3");
+  checkperror("nuicance tx initializing workers");
   txlaunchworkers(txconf);
 }

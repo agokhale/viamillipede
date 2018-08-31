@@ -25,6 +25,7 @@
 
 struct txconf_s; // forward decl to permit inception
 struct rxconf_s; // forward decl to permit inception
+struct ioconf_s; // forward decl to permit inception
 
 #define preamble_cannon_ul 0xa5a5a5a55a5a5a5a
 // opcodes for signaling oob status to remote end
@@ -71,6 +72,8 @@ struct txconf_s {
   pthread_t ingest_thread;
   int input_eof;
   int done;
+  int input_fd;
+  struct ioconf_s *ioconf;
 };
 
 struct rxworker_s {
@@ -91,6 +94,15 @@ struct rxconf_s {
   int next_leg; // main sequencer to monotonically order legs to stdout
   int done_mbox;
   pthread_mutex_t rxmutex;
+  int output_fd;
+  struct ioconf_s *ioconf;
 };
 
+struct ioconf_s {
+  unsigned terminate_port;
+  int terminate_socket;
+  char *initiate_host;
+  unsigned short initiate_port;
+  int initiate_socket;
+};
 #endif
