@@ -101,8 +101,8 @@ void txingest(struct txconf_s *txconf) {
   txstatus(txconf, 5);
   u_long usecbusy = stopwatch_stop(&(txconf->ticker), 4);
   // bytes per usec - thats interesting
-  whisper(6, " %8.4f MBps\n",
-          (txconf->stream_total_bytes * 0.0000001) / (0.000001 * usecbusy));
+  whisper(2, " %8.4f MBps in  %ld(us)\n",
+          (txconf->stream_total_bytes ) / (1.0 * usecbusy), usecbusy);
 }
 
 int txpush(struct txworker_s *txworker) {
@@ -365,12 +365,6 @@ void txstatus(struct txconf_s *txconf, int log_level) {
   }
   whisper(log_level, "\n");
 }
-void tx_final_words(struct txconf_s *txconf) {
-  whisper(2, "all complete for %lu(bytes) in ", txconf->stream_total_bytes);
-  u_long usecbusy = stopwatch_stop(&(txconf->ticker), 2);
-  // bytes per usec - thats interesting   ~== to mBps
-  whisper(1, " %05.3f MBps\n", (txconf->stream_total_bytes / (1.0 * usecbusy)));
-}
 int tx_poll(struct txconf_s *txconf) {
   // wait until all legs are pushed; called after ingest is complete
   // if there are launche/dispatched /pushing workers; hang here
@@ -396,7 +390,6 @@ int tx_poll(struct txconf_s *txconf) {
   }
   whisper(18, "\ntx: all workers idled after %i spins\n", busy_cycles);
   if (done && txconf->input_eof) {
-    tx_final_words(txconf);
     return 1;
   }
 

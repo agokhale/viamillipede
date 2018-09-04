@@ -134,14 +134,14 @@ void rxworker(struct rxworker_s *rxworker) {
       better
       so decare and error and exit
       */
-      int sequencer_stalls = 0;
+      long sequencer_stalls = 0;
       while (pkt.leg_id != rxworker->rxconf_parent->next_leg && (!restartme)) {
         pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
-#define ktimeout (1000 * 13000)
-#define ktimeout_chunks (250000)
-        usleep(ktimeout / ktimeout_chunks);
+#define ktimeout_sec ( 35 )
+#define ktimeout_granularity_usec (256)
+        usleep(ktimeout_granularity_usec);
         sequencer_stalls++;
-        assert(sequencer_stalls < ktimeout_chunks &&
+        assert(sequencer_stalls < (ktimeout_sec*1000000)*ktimeout_granularity_usec &&
                "transporter accident! rx seqencer stalled");
         pthread_mutex_lock(
             &rxworker->rxconf_parent
@@ -149,7 +149,7 @@ void rxworker(struct rxworker_s *rxworker) {
       }
       pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
       if (!restartme) {
-        whisper(5, "rxw:%02i sequenced leg:%08lu[%08lu]after %05i stalls\n",
+        whisper(5, "rxw:%02i sequenced leg:%08lu[%08lu]after %05ld stalls\n",
                 rxworker->id, pkt.leg_id, pkt.size, sequencer_stalls);
         remainder = pkt.size;
         int writesize = 0;
@@ -177,7 +177,7 @@ void rxworker(struct rxworker_s *rxworker) {
             if (rx_checksum != pkt.checksum) {
               whisper(2, "rx checksum mismatch %lu != %lu", rx_checksum,
                       pkt.checksum);
-              whisper(2, "rxw:%02i offending leg:%lu.%lu after %i stalls\n",
+              whisper(2, "rxw:%02i offending leg:%lu.%lu after %ld stalls\n",
                       rxworker->id, pkt.leg_id, pkt.size, sequencer_stalls);
             }
             assert(rx_checksum == pkt.checksum);
