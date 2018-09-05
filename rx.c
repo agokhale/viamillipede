@@ -131,8 +131,7 @@ void rxworker(struct rxworker_s *rxworker) {
       ordered by tracking it's assingment from the ingest code.
 
       If the sequencer blocks for an extended time; it's unlikely to ever get
-      better
-      so decare and error and exit
+      better so declare an error and exit
       */
       long sequencer_stalls = 0;
       while (pkt.leg_id != rxworker->rxconf_parent->next_leg && (!restartme)) {
