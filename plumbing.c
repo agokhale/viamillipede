@@ -15,10 +15,9 @@ int chaos_fail() {
 }
 
 ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
-  /** forcefully read utill a bufffer completes or EOF
-  returns the output size
-  charmode: be forgiving for smalll reads if 1
-  XXX replace with kqueue - perhaps
+  /** read utill a bufffer completes or EOF
+  charmode: be forgiving for small reads if 1
+  return: the output size
   */
   int remainder = size;
   u_char *dest_cursor = dest;
@@ -40,12 +39,6 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
               errno, readsize, MIN(MAXBSIZE, remainder), fd, dest_cursor);
     }
     checkperror("bufferfill read err");
-    /*
-    whisper( 20, "txingest: read stdin size %ld offset:%i remaining %i \n",
-             readsize,
-            (int) ((u_char*)dest_cursor - (u_char*)dest),
-            remainder );
-    */
     if (readsize < 0) {
       whisper(2, "negative read");
       perror("negread");
@@ -55,14 +48,14 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
       assert(remainder >= 0);
       accumulator += readsize;
       dest_cursor += readsize;
-      if (readsize < MAXBSIZE) {
+      if (readsize < MAXBSIZE && !charmode) {
         // discourage tinygrams - they just beat us up and chew the cpu
         // XXX histgram the readsize and use ema to track optimal effort
         sleep_thief++;
+        usleep(sleep_thief);
       } else {
         sleep_thief = 0;
       }
-      usleep(sleep_thief);
       if (readsize < 1 || charmode) {
         // short reads  are the end
         // alternately, exit if we are in char mode

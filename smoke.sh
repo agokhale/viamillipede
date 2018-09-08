@@ -22,11 +22,11 @@ ssh -N  -L 6661:localhost:4545 localhost  &
 sshpis=$!
 ssh -N  -L 6662:localhost:4545 localhost  & 
 sshpis=$!
-viamillipede verbose $ver  rx 4545 > /dev/null &
+./viamillipede verbose $ver  rx 4545 > /dev/null &
 rxpid=!
 sleep 1
 echo zeros via twin parallel ssh port forward
-dd if=/dev/zero bs=1g count=10 | viamillipede tx localhost 6661 tx localhost 6662 verbose $ver threads 2
+dd if=/dev/zero bs=1g count=10 | ./viamillipede tx localhost 6661 tx localhost 6662 verbose $ver threads 2
 
 echo zeros over viamillipede, hot path test
 dd if=/dev/zero bs=1g count=30 | ./viamillipede threads 2 verbose 3 rx 4545 tx localhost 4545  > /dev/null

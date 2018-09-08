@@ -2,6 +2,7 @@
 extern int gchecksums;
 extern int gcharmode;
 extern char *gcheckphrase;
+void tx_rate_report();
 
 int dispatch_idle_worker(struct txconf_s *txconf) {
   int retcode = -1;
@@ -101,12 +102,13 @@ void txingest(struct txconf_s *txconf) {
   txstatus(txconf, 5);
   u_long usecbusy = stopwatch_stop(&(txconf->ticker), 4);
   // bytes per usec - thats interesting
-  whisper(2, " %8.4f MBps in  %ld(us)\n",
-          (txconf->stream_total_bytes ) / (1.0 * usecbusy), usecbusy);
+  tx_rate_report();
 }
 
 int txpush(struct txworker_s *txworker) {
-  // push this buffer out the socket
+  /** push this buffer out the socket
+  return 1 on success, 0 if retry is needed
+  */
   int retcode = 1;
   int writelen = -1;
   int cursor = 0;
@@ -126,22 +128,23 @@ int txpush(struct txworker_s *txworker) {
     writelen =
         write(txworker->sockfd, ((txworker->buffer) + cursor), minedsize);
     if (errno != 0) {
+      // indicate that this needs retried
       retcode = 0;
     };
     checkperror(" write to socket");
     txworker->state = 'p'; // 'p'ush complete
     txworker->writeremainder -= writelen;
     cursor += writelen;
-    whisper(101, "txw:%02i psh leg:%lu.(+%i -%i)  ", txworker->id,
+    whisper(19, "txw:%02i psh leg:%lu.(+%i -%i)  ", txworker->id,
             txworker->pkt.leg_id, writelen, txworker->writeremainder);
   }
   checkperror("writesocket");
-  // assert ( writelen );
   pthread_mutex_lock(&(txworker->txconf_parent->mutex));
   if (retcode == 1) {
-    assert(txworker->writeremainder == 0);
-    txworker->pkt.size = 0; /// can't distroythis  un less  we are successful
-    txworker->state = 'i';  // idle ok
+    // if we are successful, drop the lease on this leg and become idle
+    assert(txworker->writeremainder == 0 && "unpushed data remains");
+    txworker->pkt.size = 0;
+    txworker->state = 'i'; // idle ok
   } else {
     DTRACE_PROBE(viamillipede, leg__drop);
     txworker->state =
@@ -152,7 +155,12 @@ int txpush(struct txworker_s *txworker) {
   return retcode;
 }
 int tx_tcp_connect_next(struct txconf_s *txconf) {
-  // pick a port/host from the list, cycleing through  them
+  /** pick a port/host from the list, cycleing through  them
+  this will bias the two lowest target port entries are favored.
+  If they are busy and more workers are available;use more target ports
+  monitorting txstatus() output will reveal the distribution
+  returns: a tcp connection attempt.
+  */
   int chosen_target = txconf->target_port_cursor++;
   txconf->target_port_cursor %= txconf->target_port_count;
   assert(txconf->target_port_cursor < txconf->target_port_count);
@@ -191,11 +199,11 @@ int tx_start_net(struct txworker_s *txworker) {
     pthread_mutex_lock(&(txworker->mutex));
     usleep((300 * 1000) << (kthreadmax - reconnect_fuse));
     whisper(5, "txw:%02ireconnecting\n", txworker->id);
+    // scary place to stall holding a lock, looking for a connect()
     txworker->sockfd = tx_tcp_connect_next(txworker->txconf_parent);
     // detect a dead connection and move on to the next port in the target map
-    // scary place to stall holding a lock, looking for a connect()
     if (txworker->sockfd > 0) {
-      // checkperror ("clearing nuisance error after recovery\n");
+      //clearing nuisance error after recovery
       whisper(5, "txw:%02i reconnect success fd:%i\n", txworker->id,
               txworker->sockfd);
       errno = 0;
@@ -220,8 +228,9 @@ int tx_start_net(struct txworker_s *txworker) {
   pid 4752 (viamillipede), uid 1001: exited on signal 6 (core dumped)
   and refused connections on the Local
   can the remote end talk?
-  this is lame  but rudimentary q/a session will assert that the tcp stream is
-  able to bear traffic
+  this is lame q/a session will assert that the tcp stream is
+  able to bear traffic, and that we are talking to viamillipede on the other
+  side
   */
   whisper(18, "txw:%i send checkphrase:%s\n", txworker->id, gcheckphrase);
   retcode = write(txworker->sockfd, gcheckphrase, 4);
@@ -232,7 +241,8 @@ int tx_start_net(struct txworker_s *txworker) {
   if (bcmp(okphrase, readback, 2) != 0) {
     whisper(5, "txw: %i expected ok failure readlen:%i", txworker->id, retcode);
   }
-  assert(bcmp(okphrase, readback, 2) == 0);
+  assert(bcmp(okphrase, readback, 2) == 0 &&
+         "ok phrase mismatch, is the other side a compatible viamillipede?");
   whisper(13, "txw:%i online fd:%i\n", txworker->id, txworker->sockfd);
   txworker->writeremainder = -88;
   txstatus(txworker->txconf_parent, 7);
@@ -288,22 +298,22 @@ void txworker_sm(struct txworker_s *txworker) {
     case 'd':
       DTRACE_PROBE(viamillipede, leg__tx)
       if (txpush(txworker) == 0) {
-        // retry  this
-        whisper(3, "txw:%02i socket failed, scheduling retry leg:%lu\n",
+        whisper(2, "txw:%02i push failed, marking for retry on leg:%lu\n",
                 txworker->id, txworker->pkt.leg_id);
       }
       sleep_thief = 0;
       break;
     case 'x':
       // reinitialize socket and retry a dead worker
-      whisper(6, "txw:02%i starting recovery, preserved leg %lu \n",
+      whisper(4, "txw:02%i starting recovery, preserved leg %lu \n",
               txworker->id, txworker->pkt.leg_id);
       errno = 0;
       tx_start_net(txworker);
       goto restartcase;
       break;
     default:
-      assert(-1 && "bad zoot");
+      whisper(1, "bad zoot");
+      exit(EDOOFUS);
     }
     sleep_thief++; // this Looks crazy ; but it's good for 30%
     // XXX back off tuning tbd
@@ -332,18 +342,16 @@ void txlaunchworkers(struct txconf_s *txconf) {
     txconf->workers[worker_cursor].buffer = calloc(1, (size_t)kfootsize);
     assert(txconf->workers[worker_cursor].buffer != NULL &&
            "insufficient memory up front");
-    // digression: pthreads murders all possible kittens stored in argument
-    // types
     checkperror("nuisance pthread error launch");
     ret =
         pthread_create(&(txconf->workers[worker_cursor].thread), NULL,
                        (void *)&txworker_sm, &(txconf->workers[worker_cursor]));
     checkperror("pthread launch");
-    assert(ret == 0 && "pthread launch");
+    assert(ret == 0 && "pthread launch error");
     worker_cursor++;
     usleep(10 * 1000);
     // 10ms standoff  to increase the likelyhood that PCBs are available on the
-    // rx side
+    // rx side to answer requests
   }
   ret = pthread_create(&(txconf->ingest_thread), NULL,
                        (void *)/*puppied killed */ &txingest, txconf);
@@ -396,23 +404,20 @@ int tx_poll(struct txconf_s *txconf) {
   return 0;
 }
 struct txconf_s *gtxconf;
-void wat() {
+void tx_rate_report() {
   struct txconf_s *txconf = gtxconf;
-  whisper(1, "\n%lu(mbytes) in ", txconf->stream_total_bytes >> 20);
   u_long usecbusy = stopwatch_stop(&(txconf->ticker), 2);
-  whisper(1, "\n");
-  txstatus(txconf, 1);
-  // bytes per usec - thats interesting  bytes to mb
-  whisper(1, "\n %8.4f MBps\n",
+  whisper(1, "\n%lu(MiBytes) in %lu(us) %8.4f(MiBps) ",
+          txconf->stream_total_bytes >> 20, usecbusy,
           (txconf->stream_total_bytes / (1.0 * usecbusy)));
+  txstatus(txconf, 1);
 }
-
 void partingshot() {
   struct txconf_s *txconf = gtxconf;
-  wat();
+  tx_rate_report();
   whisper(2, "exiting after signal");
-  checkperror(" signal caught");
-  exit(-6);
+  checkperror("signal caught");
+  exit(EINTR);
 }
 void init_workers(struct txconf_s *txconf) {
   int wcursor = kthreadmax;
@@ -434,7 +439,7 @@ void tx(struct txconf_s *txconf) {
   checkperror(" nuisance  starting tx");
   // start control channel
   stopwatch_start(&(txconf->ticker));
-  signal(SIGINFO, &wat); // XXX this gets weird in fdx mode
+  signal(SIGINFO, &tx_rate_report);
   signal(SIGINT, &partingshot);
   signal(SIGHUP, &partingshot);
   checkperror("nuisance setting signal");

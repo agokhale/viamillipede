@@ -26,24 +26,18 @@ void rxworker(struct rxworker_s *rxworker) {
             gcheckphrase);
     read(rxworker->sockfd, buffer,
          (size_t)4); // XXX this is vulnerable to slow starts
-    if (bcmp(buffer, gcheckphrase, 4) == 0) {
-      whisper(13, "rxw:%02d checkphrase ok\n", rxworker->id);
-    } else {
-      whisper(1, "rxw:%02d checkphrase failure  got: %x  %x %x %x",
+    if (bcmp(buffer, gcheckphrase, 4) != 0) {
+      whisper(1, "rxw:%02d checkphrase failure. This connection is not for me. "
+                 "got: %x %x %x %x",
               rxworker->id, buffer[0], buffer[1], buffer[2], buffer[4]);
-      assert(-1 && "checkphrase failure ");
-      exit(-1);
+      exit(EDOM);
     }
     checkperror("checkphrase  nuiscance ");
-    whisper(18, "rxw:%02i send ok\n", rxworker->id);
     if (write(rxworker->sockfd, okphrase, (size_t)2) != 2) {
-      whisper(1, "write fail ");
-      assert(-1 && "okwritefail");
-      exit(-36);
+      exit(ENOTCONN);
     }
     checkperror("signaturewrite ");
     // /usr/src/contrib/netcat has a nice pipe input routine XXX perhaps lift it
-    // XXX stop using bespoke heirloom bufferfill routines.
     while (!rxworker->rxconf_parent->done_mbox && (!restartme)) {
       struct millipacket_s pkt;
       int cursor = 0;
@@ -56,10 +50,10 @@ void rxworker(struct rxworker_s *rxworker) {
         whisper(((errno == 0) ? 19 : 3),
                 "rxw:%02i prepreamble and millipacket: errno:%i cursor:%i\n",
                 rxworker->id, errno, preamble_cursor);
-        // XX regrettable pointer cast + arithmatic otherwise we get sizeof(pkt)
-        // * cursor
-        readlen = read(rxworker->sockfd, ((u_char *)&pkt) + preamble_cursor,
-                       (sizeof(struct millipacket_s) - preamble_cursor));
+        struct iovec rxiov;
+        rxiov.iov_len = (sizeof(struct millipacket_s) - preamble_cursor);
+        rxiov.iov_base = ((u_char *)&pkt) + preamble_cursor;
+        readlen = readv(rxworker->sockfd, &rxiov, 1);
         checkperror("preamble read");
         whisper(
             ((errno == 0) ? 19 : 3),
@@ -81,8 +75,10 @@ void rxworker(struct rxworker_s *rxworker) {
         preamble_cursor += readlen;
         assert(preamble_cursor <= sizeof(struct millipacket_s));
         preamble_fuse++;
-        assert(preamble_fuse < 100000 &&
-               " preamble fuse popped, check network ");
+        if (preamble_fuse > 100000) {
+          whisper(1, "fuse popped waiting for a preamble, check network");
+          exit(ETIMEDOUT);
+        }
       }
       assert(preamble_cursor == sizeof(struct millipacket_s));
       assert(pkt.preamble == preamble_cannon_ul && "preamble check");
@@ -97,7 +93,7 @@ void rxworker(struct rxworker_s *rxworker) {
         readsize =
             read(rxworker->sockfd, buffer + cursor, MIN(remainder, MAXBSIZE));
         checkperror("rx: read failure\n");
-        if (errno != 0 || readsize == 0 || readsize < 0) {
+        if (errno != 0 || readsize <= 0) {
           whisper(4, "rxw:%02i retired due to read len:%i errno:%i\n",
                   rxworker->id, readsize, errno);
           restartme = 1;
@@ -127,7 +123,7 @@ void rxworker(struct rxworker_s *rxworker) {
        perhaps a minheap??
 
       Heisenberg compensator theory of operation:
-      next_leg will monotonically increment  asserting that the output stream is
+      next_leg will monotonically increment asserting that the output stream is
       ordered by tracking it's assingment from the ingest code.
 
       If the sequencer blocks for an extended time; it's unlikely to ever get
@@ -136,12 +132,16 @@ void rxworker(struct rxworker_s *rxworker) {
       long sequencer_stalls = 0;
       while (pkt.leg_id != rxworker->rxconf_parent->next_leg && (!restartme)) {
         pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
-#define ktimeout_sec ( 35 )
+#define ktimeout_sec (35)
 #define ktimeout_granularity_usec (256)
+#define ktimeout_stall_tolerance                                               \
+  ((ktimeout_sec * 1000000) / ktimeout_granularity_usec)
         usleep(ktimeout_granularity_usec);
         sequencer_stalls++;
-        assert(sequencer_stalls < (ktimeout_sec*1000000)*ktimeout_granularity_usec &&
-               "transporter accident! rx seqencer stalled");
+        if (sequencer_stalls > ktimeout_stall_tolerance) {
+          whisper(1, "transporter accident! rx seqencer stalled");
+          exit(EIO);
+        }
         pthread_mutex_lock(
             &rxworker->rxconf_parent
                  ->rxmutex); // do nothing but compare seqeuncer under lock
@@ -150,17 +150,13 @@ void rxworker(struct rxworker_s *rxworker) {
       if (!restartme) {
         whisper(5, "rxw:%02i sequenced leg:%08lu[%08lu]after %05ld stalls\n",
                 rxworker->id, pkt.leg_id, pkt.size, sequencer_stalls);
-        remainder = pkt.size;
         int writesize = 0;
-        cursor = 0;
-        while (remainder) {
-          writesize = write(rxworker->rxconf_parent->output_fd, buffer + cursor,
-                            (size_t)MIN(remainder, MAXBSIZE));
-          assert(writesize > 0);
-          cursor += writesize;
-          remainder -= writesize;
-        }
+        struct iovec iov;
+        iov.iov_len = pkt.size;
+        iov.iov_base = (void *)buffer;
+        writesize = writev(rxworker->rxconf_parent->output_fd, &iov, 1);
         checkperror("write buffer");
+        assert(writesize == pkt.size);
         DTRACE_PROBE(viamillipede, leg__rx);
         readlen = readsize = -111;
         if (pkt.opcode == end_of_millipede) {
@@ -184,7 +180,7 @@ void rxworker(struct rxworker_s *rxworker) {
           };
         } else {
           whisper(1, "bogus opcode %x", pkt.opcode);
-          assert(-1);
+          exit(EBADRPC);
         }
         pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
         rxworker->rxconf_parent
@@ -204,7 +200,7 @@ void rxlaunchworkers(struct rxconf_s *rxconf) {
   rxconf->next_leg = 0; // initalize sequencer
   if (tcp_recieve_prep(&(rxconf->sa), &(rxconf->socknum), rxconf->port) != 0) {
     whisper(1, "rx: tcp prep failed. this is unfortunate. ");
-    assert(-1);
+    exit(ENOTSOCK);
   }
   do {
     rxconf->workers[worker_cursor].id = worker_cursor;

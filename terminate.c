@@ -10,6 +10,7 @@ int terminate(struct txconf_s *txconf, struct rxconf_s *rxconf,
     txconf->input_fd =
         tcp_accept(&sa, ioconf->terminate_socket); // XX should we block?
     assert(txconf->input_fd > 2);
+    stopwatch_start(&(txconf->ticker)); //reset the timer to exclude waiting time
     retc = rxconf->output_fd = txconf->input_fd;
     whisper(7, "txterm: accepted fd %d", txconf->input_fd);
   } else if (ioconf->initiate_port > 0) {

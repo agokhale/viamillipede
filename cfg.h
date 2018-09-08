@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/uio.h>
 
 #include "util.h"
 #include <signal.h>

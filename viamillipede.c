@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   ioconf.initiate_port = 0;
   checkperror(" main nuiscance -0 ");
   while (arg_cursor < argc) {
-    whisper(30, "  arg: %d, %s\n", arg_cursor, argv[arg_cursor]);
+    whisper(19, "  arg: %d, %s\n", arg_cursor, argv[arg_cursor]);
     checkperror("main arg proc");
     assert(errno == 0);
     if (strcmp(argv[arg_cursor], "rx") == 0) {
@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
       assert(++arg_cursor < argc &&
              "verbose  needs <level ( 0 - 19) > argument");
       gverbose = atoi(argv[arg_cursor]);
-      whisper(5, "verbose set to %i\n", gverbose);
+      whisper(11, "verbose set to %i\n", gverbose);
     }
     if (strcmp(argv[arg_cursor], "checksums") == 0) {
       assert(arg_cursor < argc && "checksums is a flag ");
