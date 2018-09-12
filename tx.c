@@ -1,6 +1,7 @@
 #include "worker.h"
 extern int gchecksums;
 extern int gcharmode;
+extern unsigned long gprbs_seed;
 extern char *gcheckphrase;
 void tx_rate_report();
 
@@ -57,12 +58,17 @@ void txingest(struct txconf_s *txconf) {
     pthread_mutex_unlock(&(txconf->mutex));
     int worker = dispatch_idle_worker(txconf);
     assert((txconf->workers[worker].buffer) != NULL);
-    readsize =
-        bufferfill(txconf->input_fd, (u_char *)(txconf->workers[worker].buffer),
-                   kfootsize, gcharmode);
-    whisper(8, "\ntxw:%02i read leg %i : fd:%i siz:%i\n", worker,
-            ingest_leg_counter, txconf->input_fd, kfootsize);
-    assert(readsize <= kfootsize);
+    if (gprbs_seed > 0) {
+      // we are generating prbs, don't do any work
+      readsize = kfootsize;
+    } else {
+      readsize = bufferfill(txconf->input_fd,
+                            (u_char *)(txconf->workers[worker].buffer),
+                            kfootsize, gcharmode);
+      whisper(8, "\ntxw:%02i read leg %i : fd:%i siz:%i\n", worker,
+              ingest_leg_counter, txconf->input_fd, kfootsize);
+      assert(readsize <= kfootsize);
+    }
     if (readsize > 0) {
       // find the idle worker , lock it and dispatch as separate calls --
       // perhaps
@@ -117,6 +123,10 @@ int txpush(struct txworker_s *txworker) {
          "millipacket not written ");
   txworker->writeremainder = txworker->pkt.size;
   assert(txworker->writeremainder <= kfootsize);
+  if (gprbs_seed > 0) {
+    prbs_gen((unsigned long *)txworker->buffer,
+             gprbs_seed + txworker->pkt.leg_id, kfootsize);
+  }
   while (txworker->writeremainder && retcode) {
     int minedsize = MIN(MAXBSIZE, txworker->writeremainder);
     txworker->state = 'P'; // 'P'ush

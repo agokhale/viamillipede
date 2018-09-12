@@ -1,6 +1,7 @@
 #include "worker.h"
 
 extern char *gcheckphrase;
+extern unsigned long gprbs_seed;
 unsigned long grx_saved_checksum = 0xff;
 
 void rxworker(struct rxworker_s *rxworker) {
@@ -117,6 +118,15 @@ void rxworker(struct rxworker_s *rxworker) {
       }
       whisper(8, "\nrxw:%02i leg:%lu buffer filled to :%i\n", rxworker->id,
               pkt.leg_id, cursor);
+
+      if (gprbs_seed > 0) {
+        if (!prbs_verify((unsigned long *)buffer, gprbs_seed + pkt.leg_id,
+                         kfootsize)) {
+          whisper(1, "prbs verification failure");
+          exit(EDOOFUS);
+        }
+      }
+
       checkperror("read leg");
       /*block until the sequencer is ready to push this
        XXXX  suboptimal  sequencer ?? prove it!
@@ -150,13 +160,16 @@ void rxworker(struct rxworker_s *rxworker) {
       if (!restartme) {
         whisper(5, "rxw:%02i sequenced leg:%08lu[%08lu]after %05ld stalls\n",
                 rxworker->id, pkt.leg_id, pkt.size, sequencer_stalls);
-        int writesize = 0;
-        struct iovec iov;
-        iov.iov_len = pkt.size;
-        iov.iov_base = (void *)buffer;
-        writesize = writev(rxworker->rxconf_parent->output_fd, &iov, 1);
-        checkperror("write buffer");
-        assert(writesize == pkt.size);
+        if (!gprbs_seed) {
+          //we are verifying prbs, don't output
+          int writesize = 0;
+          struct iovec iov;
+          iov.iov_len = pkt.size;
+          iov.iov_base = (void *)buffer;
+          writesize = writev(rxworker->rxconf_parent->output_fd, &iov, 1);
+          checkperror("write buffer");
+          assert(writesize == pkt.size);
+        }
         DTRACE_PROBE(viamillipede, leg__rx);
         if (pkt.opcode == end_of_millipede) {
           whisper(5, "rxw:%02i caught 0x%x done with last frame\n",

@@ -7,12 +7,14 @@ void usage() {
   printf("transmitter:  vimillipede tx 192.168.0.2 12323  tx 192.168.0.3 12323 "
          "threads 3 verbose 3\n");
   printf("receiver:  vimillipede rx 12323 \n");
+  printf("prbs:  vimillipede prbs 0xfeed \n");
   printf("add repeatable  failures:  vimillipede rx 12323  chaos 180002 \n");
 }
 
 int gverbose = 0;
 unsigned long gchaos = 0;
 unsigned long gchaoscounter = 0;
+unsigned long gprbs_seed = 0;
 int gchecksums = 0;
 int gcharmode = 0;
 char *gcheckphrase;
@@ -22,6 +24,7 @@ int main(int argc, char **argv) {
   int arg_cursor = 0;
 #define MODE_TX 2
 #define MODE_RX 4
+#define MODE_PRBS 8
   int mode = 0;
   int users_input_port;
   struct txconf_s txconf;
@@ -126,6 +129,12 @@ int main(int argc, char **argv) {
     if (strcmp(argv[arg_cursor], "charmode") == 0) {
       gcharmode = 1;
       whisper(11, "charmode active");
+    }
+    if (strcmp(argv[arg_cursor], "prbs") == 0) {
+      mode |= MODE_PRBS;
+      arg_cursor++;
+      gprbs_seed = strtoul(argv[arg_cursor], NULL, 0);
+      whisper(11, "prbs mode seed %lu", gprbs_seed);
     }
     arg_cursor++;
   }

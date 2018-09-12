@@ -73,7 +73,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 + `rx <portnum> ` Become a reciever. Write output to stdout. 
 + `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host.  Optionally provide tx muliple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources shold inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
 	+ Read stdin and push it over the network. 
-	+ Full duplex, rx and tx may be used simultaneously to provide a transparent pipe. Happy shell throwing!
+	+ Full duplex, rx and tx may be used simultaneously to provide a transparent full duplex pipe. Happy shell throwing!
 		+ Two disinct port numbers are requied, one rx port for each side, with the tx on the other host pointing at the rx
 		+ host1: ./vimaillipede rx  7788 tx host2 9900 charmode
 		+ host2: ./vimaillipede rx  9900 tx host1 7788 charmode
@@ -84,6 +84,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ Use the preferred link.  Should you saturate it,  fill the next available link.
 	+ Provide tx multiple times to describe the transport graph.
 	+ Provide tx the same number of times as the thread count to precisely distribute traffic on specific links
+	+ Provide prbs 0x5a5a  generate or verify pseudorandom bit stream for load testing 
 ``` viamillipede \
 	tx host1.40g-infiniband.yoyodyne.com\
 	tx host1a.40g-infiniband.yoyodyne.com\

@@ -3,8 +3,15 @@
 echo asdf:
 echo asdf | ./viamillipede rx 4545 tx localhost 4545 verbose 15 threads 3
 
-echo push zeros around 
-dd if=/dev/zero bs=1g count=3 | cat - > /dev/null
+nau=`date +"%s`
+./viamillipede prbs 1 tx localhost 3434 verbose 3 threads 2 rx 3434 &
+prbpid=$!
+sudo dtrace -qn'profile-333hz /execname == "viamillipede"/ { @[ustack()]=count();}' -o /tmp/viaustac$nau.ustacks &
+dtpid=$!
+sleep 4
+kill $dtpid
+kill -INFO  $prbpid
+dtstackcollapse_flame.pl < /tmp/viaustac$nau.ustacks | flamegraph.pl > /net/delerium/zz/pub/viam.svg
 
 
 echo tunnel ssh over an fdx viamillipede this is probably a bad idea as ssh issues tinygrams and the system shoe shines around buffer sync trouble
