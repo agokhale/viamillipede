@@ -100,8 +100,6 @@ void txingest(struct txconf_s *txconf) {
   whisper(4, "tx:ingest complete for %lu(bytes) in \n\n",
           txconf->stream_total_bytes);
   txstatus(txconf, 5);
-  u_long usecbusy = stopwatch_stop(&(txconf->ticker), 4);
-  // bytes per usec - thats interesting
   tx_rate_report();
 }
 
@@ -203,7 +201,7 @@ int tx_start_net(struct txworker_s *txworker) {
     txworker->sockfd = tx_tcp_connect_next(txworker->txconf_parent);
     // detect a dead connection and move on to the next port in the target map
     if (txworker->sockfd > 0) {
-      //clearing nuisance error after recovery
+      // clearing nuisance error after recovery
       whisper(5, "txw:%02i reconnect success fd:%i\n", txworker->id,
               txworker->sockfd);
       errno = 0;
@@ -235,6 +233,7 @@ int tx_start_net(struct txworker_s *txworker) {
   whisper(18, "txw:%i send checkphrase:%s\n", txworker->id, gcheckphrase);
   retcode = write(txworker->sockfd, gcheckphrase, 4);
   checkperror("tx: phrase write fail");
+  assert(retcode == 4 && "tx: failed to write checkphrase to network");
   whisper(18, "txw:%i expect ok \n", txworker->id);
   retcode = read(txworker->sockfd, &readback, 2);
   checkperror("tx: read fail");
@@ -353,10 +352,11 @@ void txlaunchworkers(struct txconf_s *txconf) {
     // 10ms standoff  to increase the likelyhood that PCBs are available on the
     // rx side to answer requests
   }
-  ret = pthread_create(&(txconf->ingest_thread), NULL,
-                       (void *)/*puppied killed */ &txingest, txconf);
+  ret =
+      pthread_create(&(txconf->ingest_thread), NULL, (void *)&txingest, txconf);
   checkperror("ingest thread launch");
-  whisper(15, "tx workers launched ");
+  assert(ret == 0 && "tx: pthread_create error");
+  whisper(15, "all tx workers launched ");
   txstatus(txconf, 5);
 }
 
@@ -413,7 +413,6 @@ void tx_rate_report() {
   txstatus(txconf, 1);
 }
 void partingshot() {
-  struct txconf_s *txconf = gtxconf;
   tx_rate_report();
   whisper(2, "exiting after signal");
   checkperror("signal caught");

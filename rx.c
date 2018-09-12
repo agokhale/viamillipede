@@ -158,11 +158,12 @@ void rxworker(struct rxworker_s *rxworker) {
         checkperror("write buffer");
         assert(writesize == pkt.size);
         DTRACE_PROBE(viamillipede, leg__rx);
-        readlen = readsize = -111;
         if (pkt.opcode == end_of_millipede) {
           whisper(5, "rxw:%02i caught 0x%x done with last frame\n",
                   rxworker->id, pkt.opcode);
-          rxworker->rxconf_parent->done_mbox = 1; // XXX xxx
+          pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
+          rxworker->rxconf_parent->done_mbox = 1;
+          pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
         } else if (pkt.opcode == feed_more) {
           // the last frame will be empty and have a borken cksum
           if (pkt.checksum) {
@@ -190,7 +191,8 @@ void rxworker(struct rxworker_s *rxworker) {
     }   // while !done_mbox
     whisper(5, "rxw:%02i exiting work restartme block\n", rxworker->id);
   } // restartme
-  whisper(4, "rxw:%02i done\n", rxworker->id);
+  free(buffer);
+  whisper(4, "rxw:%02i done", rxworker->id);
 }
 
 void rxlaunchworkers(struct rxconf_s *rxconf) {
