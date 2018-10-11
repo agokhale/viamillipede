@@ -5,6 +5,22 @@ extern unsigned long gprbs_seed;
 extern char *gcheckphrase;
 void tx_rate_report();
 
+char tx_state(struct txworker_s *txworker) {
+  // wrap the state with a locking primatitve
+  pthread_mutex_lock(&txworker->mutex);
+  char ret_tmp = txworker->state;
+  pthread_mutex_unlock(&txworker->mutex);
+  return ret_tmp;
+}
+
+char tx_state_set(struct txworker_s *txworker, char instate) {
+  // wrap the state with a locking primatitve
+  pthread_mutex_lock(&txworker->mutex);
+  char ret_tmp = txworker->state = instate;
+  pthread_mutex_unlock(&txworker->mutex);
+  return ret_tmp;
+}
+
 int dispatch_idle_worker(struct txconf_s *txconf) {
   int retcode = -1;
   txstatus(txconf, 5);
@@ -14,7 +30,7 @@ int dispatch_idle_worker(struct txconf_s *txconf) {
     for (int worker_cursor = 0;
          (worker_cursor < txconf->worker_count) && (retcode < 0);
          worker_cursor++) {
-      if (txconf->workers[worker_cursor].state == 'i') {
+      if (tx_state(&txconf->workers[worker_cursor]) == 'i') {
         // we have a idle volunteer. winner!
         retcode = worker_cursor;
         // if there are any idle workers, erase memory of sleeping
@@ -38,9 +54,7 @@ int dispatch_idle_worker(struct txconf_s *txconf) {
 
 void start_worker(struct txworker_s *txworker) {
   assert(txworker->id < kthreadmax);
-  pthread_mutex_lock(&(txworker->txconf_parent->mutex));
-  txworker->state = 'd';
-  pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
+  tx_state_set(txworker, 'd');
   txstatus(txworker->txconf_parent, 6);
 }
 
@@ -52,12 +66,12 @@ void txingest(struct txconf_s *txconf) {
   unsigned long saved_checksum = 0xff;
   int ingest_leg_counter = 0;
   txconf->stream_total_bytes = 0;
+  whisper(16, "tx:ingest started on fd:%d", txconf->input_fd);
   checkperror("nuisancse ingest err");
   pthread_mutex_lock(&(txconf->mutex));
   while (!txconf->done) {
     pthread_mutex_unlock(&(txconf->mutex));
     int worker = dispatch_idle_worker(txconf);
-    assert((txconf->workers[worker].buffer) != NULL);
     if (gprbs_seed > 0) {
       // we are generating prbs, don't do any work
       readsize = kfootsize;
@@ -65,12 +79,13 @@ void txingest(struct txconf_s *txconf) {
       readsize = bufferfill(txconf->input_fd,
                             (u_char *)(txconf->workers[worker].buffer),
                             kfootsize, gcharmode);
-      whisper(8, "\ntxw:%02i read leg %i : fd:%i siz:%i\n", worker,
-              ingest_leg_counter, txconf->input_fd, kfootsize);
+      checkperror("ingest read");
+      whisper(9, "\ntxw:%02i read leg %i : fd:%i reqsiz:%i rsiz:%i\n", worker,
+              ingest_leg_counter, txconf->input_fd, kfootsize, readsize);
       assert(readsize <= kfootsize);
     }
     if (readsize > 0) {
-      // find the idle worker , lock it and dispatch as separate calls --
+      // find first idle worker , lock it and dispatch as separate calls --
       // perhaps
       txconf->workers[worker].pkt.size = readsize;
       txconf->workers[worker].pkt.leg_id = ingest_leg_counter;
@@ -87,12 +102,11 @@ void txingest(struct txconf_s *txconf) {
       start_worker(&(txconf->workers[worker]));
       txconf->stream_total_bytes += readsize;
     } else {
-      whisper(4, "txingest no more stdin, send shutdown");
+      whisper(4, "txingest: stdin exhausted. sending shutdown.");
       pthread_mutex_lock(&(txconf->mutex));
       txconf->done = 1;
       txconf->input_eof = 1;
       pthread_mutex_unlock(&(txconf->mutex));
-      int worker = dispatch_idle_worker(txconf);
       txconf->workers[worker].pkt.size = 0;
       txconf->workers[worker].pkt.leg_id = ingest_leg_counter;
       txconf->workers[worker].pkt.opcode = end_of_millipede;
@@ -101,7 +115,6 @@ void txingest(struct txconf_s *txconf) {
     ingest_leg_counter++;
     pthread_mutex_lock(&(txconf->mutex));
   }
-  txconf->done = 1;
   pthread_mutex_unlock(&(txconf->mutex));
   whisper(4, "tx:ingest complete for %lu(bytes) in \n\n",
           txconf->stream_total_bytes);
@@ -116,7 +129,7 @@ int txpush(struct txworker_s *txworker) {
   int retcode = 1;
   int writelen = -1;
   int cursor = 0;
-  txworker->state = 'a'; // preAmble
+  tx_state_set(txworker, 'a'); // preAmble
   int pktwrret =
       write(txworker->sockfd, &txworker->pkt, sizeof(struct millipacket_s));
   assert(pktwrret == sizeof(struct millipacket_s) &&
@@ -129,7 +142,7 @@ int txpush(struct txworker_s *txworker) {
   }
   while (txworker->writeremainder && retcode) {
     int minedsize = MIN(MAXBSIZE, txworker->writeremainder);
-    txworker->state = 'P'; // 'P'ush
+    tx_state_set(txworker, 'P'); // 'P'ush
     if (chaos_fail()) {
       close(txworker->sockfd); // things fail sometimes
     }
@@ -140,7 +153,7 @@ int txpush(struct txworker_s *txworker) {
       retcode = 0;
     };
     checkperror(" write to socket");
-    txworker->state = 'p'; // 'p'ush complete
+    tx_state_set(txworker, 'p'); // 'p'ush complete
     txworker->writeremainder -= writelen;
     cursor += writelen;
     whisper(19, "txw:%02i psh leg:%lu.(+%i -%i)  ", txworker->id,
@@ -152,11 +165,11 @@ int txpush(struct txworker_s *txworker) {
     // if we are successful, drop the lease on this leg and become idle
     assert(txworker->writeremainder == 0 && "unpushed data remains");
     txworker->pkt.size = 0;
-    txworker->state = 'i'; // idle ok
+    tx_state_set(txworker, 'i'); // idle ok
   } else {
     DTRACE_PROBE(viamillipede, leg__drop);
-    txworker->state =
-        'x'; // dead  do not transmit more; save state and do it again
+    tx_state_set(txworker,
+                 'x'); // dead  do not transmit more; save state and do it again
     whisper(7, "rxw:%02i is dead\n", txworker->id);
   }
   pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
@@ -187,16 +200,15 @@ int tx_start_net(struct txworker_s *txworker) {
   const char okphrase[] = "ok";
   int retcode;
   char readback[2048];
-
-  txworker->state = 'c'; // connecting
+  tx_state_set(txworker, 'c'); // connecting
   txworker->sockfd = tx_tcp_connect_next(txworker->txconf_parent);
-  unsigned int reconnect_fuse = kthreadmax;
+  unsigned int reconnect_fuse = kreconnectlimit;
   while ((txworker->sockfd == -1) && (reconnect_fuse)) {
 
     pthread_mutex_lock(&(txworker->txconf_parent->mutex));
     if (txworker->txconf_parent->done) {
       pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
-      txworker->state = 'f';
+      tx_state_set(txworker, 'f');
       whisper(2, "txw:%02d ingest done reconnect not required anymore; giving "
                  "up thread\n",
               txworker->id);
@@ -205,7 +217,7 @@ int tx_start_net(struct txworker_s *txworker) {
     pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
 
     pthread_mutex_lock(&(txworker->mutex));
-    usleep((300 * 1000) << (kthreadmax - reconnect_fuse));
+    usleep((300 * 1000) << (kreconnectlimit - reconnect_fuse));
     whisper(5, "txw:%02ireconnecting\n", txworker->id);
     // scary place to stall holding a lock, looking for a connect()
     txworker->sockfd = tx_tcp_connect_next(txworker->txconf_parent);
@@ -221,7 +233,7 @@ int tx_start_net(struct txworker_s *txworker) {
   }
   if (reconnect_fuse == 0) {
     // die, we were unable to work thorugh the list and get a grip
-    txworker->state = 'f';
+    tx_state_set(txworker, 'f');
     whisper(2, "txw:%02d reconnect fuse popped; giving up thread\n",
             txworker->id);
     pthread_exit(0);
@@ -263,14 +275,11 @@ void txworker_sm(struct txworker_s *txworker) {
   int retcode = -1;
   char local_state = 0;
   int sleep_thief = 0;
-  pthread_mutex_init(&(txworker->mutex), NULL);
   retcode = tx_start_net(txworker);
   assert(retcode > 0);
-
+  pthread_set_name_np(txworker->thread, "tx:worker");
   whisper(11, "txw:%i idling fd:%i\n", txworker->id, txworker->sockfd);
-  pthread_mutex_lock(&(txworker->mutex));
-  txworker->state = 'i'; // idle
-  pthread_mutex_unlock(&(txworker->mutex));
+  tx_state_set(txworker, 'i');
   txworker->pkt.size = 0;
   txworker->pkt.leg_id = 0;
   txworker->pkt.preamble = preamble_cannon_ul;
@@ -286,7 +295,7 @@ void txworker_sm(struct txworker_s *txworker) {
       whisper(4, "txw:%02i nothing left to do\n", txworker->id);
       done = 1;
     }
-    local_state = txworker->state;
+    local_state = tx_state(txworker);
     pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
     switch (local_state) {
     /* valid states:
@@ -338,14 +347,14 @@ void txlaunchworkers(struct txconf_s *txconf) {
   int ret;
   checkperror("nuisance before launch");
   while (worker_cursor < txconf->worker_count) {
-    txconf->workers[worker_cursor].state = '0'; // unitialized
+    tx_state_set(&txconf->workers[worker_cursor], '-'); // unitialized
     txconf->workers[worker_cursor].txconf_parent =
         txconf;                                    // allow inpection/inception
     txconf->workers[worker_cursor].pkt.leg_id = 0; //
     txconf->workers[worker_cursor].pkt.size = -66; //
     txconf->workers[worker_cursor].sockfd = -66;   //
     whisper(16, "txw:%i launching ", worker_cursor);
-    txconf->workers[worker_cursor].state = 'L';
+    tx_state_set(&txconf->workers[worker_cursor], 'L'); // launched
     txconf->workers[worker_cursor].id = worker_cursor;
     // allocate before thread launch
     txconf->workers[worker_cursor].buffer = calloc(1, (size_t)kfootsize);
@@ -362,10 +371,11 @@ void txlaunchworkers(struct txconf_s *txconf) {
     // 10ms standoff  to increase the likelyhood that PCBs are available on the
     // rx side to answer requests
   }
-  ret =
+  /*ret =
       pthread_create(&(txconf->ingest_thread), NULL, (void *)&txingest, txconf);
   checkperror("ingest thread launch");
   assert(ret == 0 && "tx: pthread_create error");
+*/
   whisper(15, "all tx workers launched ");
   txstatus(txconf, 5);
 }
@@ -376,7 +386,7 @@ void txstatus(struct txconf_s *txconf, int log_level) {
     if (i % 8 == 0) {
       whisper(log_level, "\n");
     }
-    whisper(log_level, "%c:%lu(%i)\t", txconf->workers[i].state,
+    whisper(log_level, "%c:%lu(%i)\t", tx_state(&txconf->workers[i]),
             txconf->workers[i].pkt.leg_id,
             (txconf->workers[i].writeremainder) >> 10 // kbytes are sufficient
             );
@@ -397,7 +407,7 @@ int tx_poll(struct txconf_s *txconf) {
     int busy_workers = 0;
     for (int i = 0; i < txconf->worker_count; i++) {
       // XXXXXpthread_mutex_lock (  &(txconf->workers[i].mutex) );
-      instate = txconf->workers[i].state;
+      instate = tx_state(&txconf->workers[i]);
       // pthread_mutex_unlock (  &(txconf->workers[i].mutex) );
       if ((instate != 'i') && (instate != 'f')) {
         busy_workers++;
@@ -406,7 +416,6 @@ int tx_poll(struct txconf_s *txconf) {
     }
     done = (busy_workers == 0);
   }
-  whisper(18, "\ntx: all workers idled after %i spins\n", busy_cycles);
   if (done && txconf->input_eof) {
     return 1;
   }
@@ -433,8 +442,8 @@ void init_workers(struct txconf_s *txconf) {
   while (wcursor--) {
     txconf->workers[wcursor].id = wcursor;
     txconf->workers[wcursor].txconf_parent = txconf;
-    txconf->workers[wcursor].state = 'E';
     pthread_mutex_init(&(txconf->workers[wcursor].mutex), NULL);
+    tx_state_set(&txconf->workers[wcursor], 'E'); // error if you ever see this
     txconf->workers[wcursor].sockfd = 0;
     txconf->workers[wcursor].pkt.size = 0;
     txconf->workers[wcursor].pkt.leg_id = 0;
@@ -455,6 +464,7 @@ void tx(struct txconf_s *txconf) {
   pthread_mutex_init(&(txconf->mutex), NULL);
   pthread_mutex_lock(&(txconf->mutex));
   checkperror("nuicance  locking txconf");
+  pthread_set_name_np(txconf->ingest_thread, "tx:ingest");
   txconf->done = 0;
   txconf->input_eof = 0;
   pthread_mutex_unlock(&(txconf->mutex));

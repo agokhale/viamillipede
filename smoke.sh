@@ -1,39 +1,91 @@
-#!/bin/sh -x
+#!/bin/sh
 
-echo asdf:
-echo asdf | ./viamillipede rx 4545 tx localhost 4545 verbose 15 threads 3
+verboarg="2"
 
-nau=`date +"%s`
-./viamillipede prbs 1 tx localhost 3434 verbose 3 threads 2 rx 3434 &
+fini() {
+echo "foom, cleaning up"
+rm -f  $allcollateralfiles
+echo "escaped prisoners still running:"
+pgrep vmpdbin
+
+kill $prisoners
+exit 0
+}
+trap fini  KILL INT TERM
+#____________________________________________________________________________
+#build it, stash the binary somewhere dangerous
+make clean 
+make  || exit  -1
+dutbin=`mktemp "/tmp/vmpdbin.XXX"` || exit -11
+allcollateralfiles=$dutbin
+mv viamillipede $dutbin
+#____________________________________________________________________________
+t_est_loopback_trivial() {
+echo loopback:
+output=`echo asdf | $dutbin rx 4545 tx localhost 4545  threads 3`
+case $output in
+ "asdf") break ;;
+ *) exit -4;;
+esac
+
+}
+t_est_loopback_trivial
+#________________________________________________________________________
+t_est_prbs() {
+ echo prbs:
+ $dutbin prbs 1 tx localhost 3434 verbose 4 threads 2 rx 3434 &
+ prbpid=$!
+ sleep 3 
+ kill -INFO $prbpid
+ sleep 0.2
+kill -INFO  $prbpid
+kill  $prbpid
+}
+t_est_prbs
+#________________________________________________________________________
+dtflame()  {
+nau=`date +"%s"`
+$dutbin prbs 1 tx localhost 3434 verbose 3 threads 2 rx 3434 &
 prbpid=$!
-sudo dtrace -qn'profile-333hz /execname == "viamillipede"/ { @[ustack()]=count();}' -o /tmp/viaustac$nau.ustacks &
+dtrace  -p`pgrep viamillipede` -qn'profile-333hz /execname == "viamillipede"/ { @[ustack()]=count();}' -o /tmp/viaustac$nau.ustacks &
 dtpid=$!
 sleep 4
 kill $dtpid
-kill -INFO  $prbpid
+sleep 0.3
 dtstackcollapse_flame.pl < /tmp/viaustac$nau.ustacks | flamegraph.pl > /net/delerium/zz/pub/viam.svg
-
-
-echo tunnel ssh over an fdx viamillipede this is probably a bad idea as ssh issues tinygrams and the system shoe shines around buffer sync trouble
-ver="3"
-./viamillipede charmode threads 2 initiate localhost 22  tx localhost 4546 rx 4545  verbose $ver &
-nitpid=$!
-./viamillipede charmode threads 2 terminate 6622  tx localhost 4545 rx 4546  verbose $ver &
-termpid=$!
-sleep 3
-ssh  -p 6622 localhost "dd if=/dev/zero bs=10m count=1" > /dev/null
-
-
+}
+#________________________________________________________________________
+t_bearer_for_ssh() {
+	echo tunnel ssh over an fdx viamillipede this is probably a bad idea as ssh issues tinygrams and the system shoe shines around buffer sync trouble
+	$dutbin charmode threads 2 terminate 16622  tx localhost 4545 rx 4546  verbose $verboarg &
+	termpid=$!
+	sleep 1
+	$dutbin charmode threads 2 initiate localhost 22  tx localhost 4546 rx 4545  verbose $verboarg &
+	nitpid=$!
+	prisoners="$prisoners $nitpid $termpid"
+	sleep 3
+	ssh  -vvv -p 16622 localhost "dd if=/dev/zero bs=10m count=1" > /dev/null
+	prisoners="$prisoners $nitpid $termpid"
+}
+#________________________________________________________________________
+t_ssh_as_bearer()  {
 echo tunnel viamillipede over multiple ssh tunnels this works handily and will happily boil your cpus doing parallel ssh expect 340mbps
-ssh -N  -L 6661:localhost:4545 localhost  & 
-sshpis=$!
-ssh -N  -L 6662:localhost:4545 localhost  & 
-sshpis=$!
-./viamillipede verbose $ver  rx 4545 > /dev/null &
+ssh -N  -L 16661:localhost:14545 localhost  & 
+sshpid1=$!
+ssh -N  -L 16662:localhost:14545 localhost  & 
+sshpid2=$!
+$dutbin verbose $verboarg  rx 14545 > /dev/null &
 rxpid=!
 sleep 1
-echo zeros via twin parallel ssh port forward
-dd if=/dev/zero bs=1g count=10 | ./viamillipede tx localhost 6661 tx localhost 6662 verbose $ver threads 2
+dd if=/dev/zero bs=1g count=10 | $dutbin tx localhost 16661 tx localhost 16662 verbose $verboarg threads 2
+prisoners="$sshpid1 $sshpid2 $rxpid $prisoners"
+}
+t_ssh_as_bearer
 
+#________________________________________________________________________
 echo zeros over viamillipede, hot path test
-dd if=/dev/zero bs=1g count=30 | ./viamillipede threads 2 verbose 3 rx 4545 tx localhost 4545  > /dev/null
+dd if=/dev/zero bs=1g count=30 | $dutbin threads 2 verbose 3 rx 4545 tx localhost 4545  > /dev/null
+
+#________________________________________________________________________
+
+fini

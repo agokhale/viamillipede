@@ -116,7 +116,7 @@ void rxworker(struct rxworker_s *rxworker) {
                 pkt.leg_id, readsize >> 10, remainder >> 10,
                 ((remainder_counter++) % 16 == 0) ? (int)10 : (int)' ');
       }
-      whisper(8, "\nrxw:%02i leg:%lu buffer filled to :%i\n", rxworker->id,
+      whisper(18, "\nrxw:%02i leg:%lu buffer filled to :%i\n", rxworker->id,
               pkt.leg_id, cursor);
 
       if (gprbs_seed > 0) {
@@ -128,6 +128,9 @@ void rxworker(struct rxworker_s *rxworker) {
       }
 
       checkperror("read leg");
+      if (pkt.leg_id == 0) {
+        initiate_relay(); // initiate the tcp connection if we are an initiator
+      }
       /*block until the sequencer is ready to push this
        XXXX  suboptimal  sequencer ?? prove it!
        perhaps a minheap??
@@ -161,13 +164,15 @@ void rxworker(struct rxworker_s *rxworker) {
         whisper(5, "rxw:%02i sequenced leg:%08lu[%08lu]after %05ld stalls\n",
                 rxworker->id, pkt.leg_id, pkt.size, sequencer_stalls);
         if (!gprbs_seed) {
-          //we are verifying prbs, don't output
+          // we are verifying prbs, don't output
           int writesize = 0;
           struct iovec iov;
           iov.iov_len = pkt.size;
           iov.iov_base = (void *)buffer;
           writesize = writev(rxworker->rxconf_parent->output_fd, &iov, 1);
-          checkperror("write buffer");
+          whisper(19, "rxw: writev fd:%i siz:%ld",
+                  rxworker->rxconf_parent->output_fd, pkt.size);
+          checkperror("rxw:write buffer");
           assert(writesize == pkt.size);
         }
         DTRACE_PROBE(viamillipede, leg__rx);
@@ -180,7 +185,6 @@ void rxworker(struct rxworker_s *rxworker) {
         } else if (pkt.opcode == feed_more) {
           // the last frame will be empty and have a borken cksum
           if (pkt.checksum) {
-
             rx_checksum =
                 mix(grx_saved_checksum + pkt.leg_id, buffer, pkt.size);
             if (rx_checksum != pkt.checksum) {

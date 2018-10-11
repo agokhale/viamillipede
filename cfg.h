@@ -23,6 +23,7 @@
   (2048 * 1024) // 2M is experimentally nice; however a PMC driven cache/use
                 // study  would be great to inform this
 #define kthreadmax 16
+#define kreconnectlimit 512
 
 struct txconf_s; // forward decl to permit inception
 struct rxconf_s; // forward decl to permit inception
