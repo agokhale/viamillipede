@@ -463,7 +463,6 @@ void tx(struct txconf_s *txconf) {
   pthread_mutex_init(&(txconf->mutex), NULL);
   pthread_mutex_lock(&(txconf->mutex));
   checkperror("nuicance  locking txconf");
-  pthread_set_name_np(txconf->ingest_thread, "tx:ingest");
   txconf->done = 0;
   txconf->input_eof = 0;
   pthread_mutex_unlock(&(txconf->mutex));
