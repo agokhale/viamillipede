@@ -277,7 +277,6 @@ void txworker_sm(struct txworker_s *txworker) {
   int sleep_thief = 0;
   retcode = tx_start_net(txworker);
   assert(retcode > 0);
-  pthread_set_name_np(txworker->thread, "tx:worker");
   whisper(11, "txw:%i idling fd:%i\n", txworker->id, txworker->sockfd);
   tx_state_set(txworker, 'i');
   txworker->pkt.size = 0;
