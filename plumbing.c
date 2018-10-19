@@ -76,16 +76,20 @@ int stopwatch_stop(struct timespec *t, int whisper_channel) {
   assert(clock_gettime(CLOCK_UPTIME, &stoptime) == 0);
   time_t secondsdiff = stoptime.tv_sec - t->tv_sec;
   long nanoes = stoptime.tv_nsec - t->tv_nsec;
+  // microoptimization trick to avoid a branch 
+  // borrow a billion seconds
+  nanoes += 1000000000;
+  secondsdiff--;
+  //rely on truncation to correct the seconds place
+  secondsdiff += nanoes / 1000000000;
+  /* simple way relies on a branch 
   if (nanoes < 0) {
     // borrow billions place nanoseconds to come up true
     nanoes += 1000000000;
     secondsdiff--;
   }
-  u_long ret =
-      MIN(ULONG_MAX, (secondsdiff * 1000000) + (nanoes / 1000)); // in usec
-  if (whisper_channel > 0) {
-    whisper(whisper_channel, "%li.%03li", secondsdiff, nanoes / 1000000);
-  }
+  */
+  u_long ret = (secondsdiff * 1000000) + (nanoes / 1000); // in usec
   return ret;
 }
 // return a connected socket fd
