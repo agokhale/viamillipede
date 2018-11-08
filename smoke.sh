@@ -33,12 +33,11 @@ t_est_loopback_trivial
 #________________________________________________________________________
 t_est_prbs() {
  echo prbs:
- $dutbin prbs 1 tx localhost 3434 verbose 4 threads 2 rx 3434 &
+ $dutbin prbs 0xd00f tx localhost 3434 verbose 4 threads 2 rx 3434 &
  prbpid=$!
  sleep 3 
  kill -INFO $prbpid
  sleep 0.2
-kill -INFO  $prbpid
 kill  $prbpid
 }
 t_est_prbs
@@ -64,9 +63,10 @@ t_bearer_for_ssh() {
 	nitpid=$!
 	prisoners="$prisoners $nitpid $termpid"
 	sleep 3
-	ssh  -vvv -p 16622 localhost "dd if=/dev/zero bs=10m count=1" > /dev/null
+	ssh  -p 16622 localhost "dd if=/dev/zero bs=10m count=1" > /dev/null
 	prisoners="$prisoners $nitpid $termpid"
 }
+t_bearer_for_ssh
 #________________________________________________________________________
 t_ssh_as_bearer()  {
 echo tunnel viamillipede over multiple ssh tunnels this works handily and will happily boil your cpus doing parallel ssh expect 340mbps
@@ -85,7 +85,6 @@ t_ssh_as_bearer
 #________________________________________________________________________
 echo zeros over viamillipede, hot path test
 dd if=/dev/zero bs=1g count=30 | $dutbin threads 2 verbose 3 rx 4545 tx localhost 4545  > /dev/null
-
 #________________________________________________________________________
 
 fini
