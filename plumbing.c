@@ -23,7 +23,7 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
   u_char *dest_cursor = dest;
   ssize_t accumulator = 0;
   ssize_t readsize;
-  int fuse = 55; // don't spin  forever
+  ///fuseint fuse = 55; // don't spin  forever
   int sleep_thief = 0;
   assert(dest != NULL);
   do {
@@ -62,9 +62,10 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
         break;
       }
     }
-  } while ((remainder > 0) && (fuse-- > 0));
-  assert((fuse > 1) && "fuse blown");
-  return ((fuse < 1) ? -1 : accumulator);
+  } while (remainder > 0);
+  //} while ((remainder > 0) && (fuse-- > 0));
+  //assert((fuse > 1) && "fuse blown");
+  return (accumulator);
 }
 void stopwatch_start(struct timespec *t) {
   assert(clock_gettime(CLOCK_UPTIME, t) == 0);
