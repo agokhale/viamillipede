@@ -96,6 +96,7 @@ struct rxconf_s {
   int next_leg; // main sequencer to monotonically order legs to stdout
   int done_mbox;
   pthread_mutex_t rxmutex;
+  pthread_cond_t seq_cv;
   int output_fd;
   struct ioconf_s *ioconf;
 };

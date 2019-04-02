@@ -1,5 +1,12 @@
 #include "worker.h"
 
+#define ktimeout_sec (35)
+#define ktimeout_granularity_usec (550256)
+#define ktimeout_stall_tolerance                                               \
+  ((ktimeout_sec * 1000000) / ktimeout_granularity_usec)
+//use condvars
+#define kv 1
+
 extern char *gcheckphrase;
 extern unsigned long gprbs_seed;
 unsigned long grx_saved_checksum = 0xff;
@@ -12,6 +19,13 @@ void rxworker(struct rxworker_s *rxworker) {
   char okphrase[] = "ok";
   char checkphrase[] = "yoes";
   buffer = calloc(1, (size_t)kfootsize);
+#ifdef kv
+  assert(pthread_cond_init (  &rxworker->rxconf_parent->seq_cv, NULL) == 0); 
+  struct timespec stall_timespec;
+  stall_timespec.tv_sec = 0;
+  stall_timespec.tv_nsec = 1000 * (ktimeout_granularity_usec );
+#endif
+  setproctitle ( " rx %d", rxworker->id);
 
   while (!rxworker->rxconf_parent->done_mbox) {
     restartme = 0;
@@ -144,17 +158,20 @@ void rxworker(struct rxworker_s *rxworker) {
       */
       long sequencer_stalls = 0;
       while (pkt.leg_id != rxworker->rxconf_parent->next_leg && (!restartme)) {
+#ifdef kv
+        //pthread_cond_timedwait (&rxworker->rxconf_parent->seq_cv, 
+        //    &rxworker->rxconf_parent->rxmutex, &stall_timespec); 
+        pthread_cond_wait (&rxworker->rxconf_parent->seq_cv, 
+             &rxworker->rxconf_parent->rxmutex);
+#else
         pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
-#define ktimeout_sec (35)
-#define ktimeout_granularity_usec (256)
-#define ktimeout_stall_tolerance                                               \
-  ((ktimeout_sec * 1000000) / ktimeout_granularity_usec)
         usleep(ktimeout_granularity_usec);
         sequencer_stalls++;
         if (sequencer_stalls > ktimeout_stall_tolerance) {
           whisper(1, "transporter accident! rx seqencer stalled");
           exit(EIO);
         }
+#endif
         pthread_mutex_lock(
             &rxworker->rxconf_parent
                  ->rxmutex); // do nothing but compare seqeuncer under lock
@@ -204,6 +221,8 @@ void rxworker(struct rxworker_s *rxworker) {
         rxworker->rxconf_parent
             ->next_leg++; // do this last or race out the cksum code
         pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
+        // the sleepers must awaken
+        pthread_cond_broadcast(&rxworker->rxconf_parent->seq_cv);
       } // if not restartme
     }   // while !done_mbox
     whisper(5, "rxw:%02i exiting work restartme block\n", rxworker->id);

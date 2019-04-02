@@ -15,7 +15,7 @@ int chaos_fail() {
 }
 
 ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
-  /** read utill a bufffer completes or EOF
+  /** read until a buffer completes or EOF
   charmode: be forgiving for small reads if 1
   return: the output size
   */
@@ -27,18 +27,18 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
   int sleep_thief = 0;
   assert(dest != NULL);
   do {
-    checkperror("bufferfill nuiscance err");
     if (errno != 0) {
-      whisper(3, "ignoring sig %i\n", errno);
+      whisper(3, "ignoring sir %i\n", errno);
+      checkperror("bufferfill nuiscance err");
       errno = 0;
     }
     // reset nuiscances
     readsize = read(fd, dest_cursor, MIN(MAXBSIZE, remainder));
     if (errno != 0) {
+      checkperror("bufferfill read err");
       whisper(3, "erno: %i  readsize %ld requestedsiz: %d  fd:%i dest:%p \n",
               errno, readsize, MIN(MAXBSIZE, remainder), fd, dest_cursor);
     }
-    checkperror("bufferfill read err");
     if (readsize < 0) {
       whisper(2, "negative read");
       perror("negread");
@@ -164,6 +164,7 @@ int tcp_accept(struct sockaddr_in *sa, int socknum) {
 }
 
 unsigned long mix(unsigned int seed, void *data, unsigned long size) {
+
   unsigned acc = seed;
   for (unsigned long cursor = 0; cursor <= size;
        cursor +=
