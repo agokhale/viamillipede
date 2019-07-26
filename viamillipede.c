@@ -116,7 +116,7 @@ int main(int argc, char **argv) {
       assert(arg_cursor < argc && "checksums is a flag ");
       gchecksums = 1;
       checkperror(" main checksum -3 ");
-      whisper(11, "checksum set to %lu", gchecksums);
+      whisper(11, "checksum set to %d", gchecksums);
     }
 #ifdef CHAOS
     if (strcmp(argv[arg_cursor], "chaos") == 0) {

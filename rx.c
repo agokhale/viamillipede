@@ -143,7 +143,7 @@ void rxworker(struct rxworker_s *rxworker) {
       if (gprbs_seed > 0) {
         if (!prbs_verify((unsigned long *)buffer, gprbs_seed + pkt.leg_id,
                          kfootsize)) {
-          whisper(0, "prbs verification failure leg:%x", pkt.leg_id);
+          whisper(0, "prbs verification failure leg:%lx", pkt.leg_id);
           exit(EDOOFUS);
         }
       }
