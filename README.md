@@ -146,7 +146,6 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+  ``` viamillipede prbs 0xd00f tx localhost 3434 rx 3434 ```
 	+ Will not terminate.
 	+ bitstream is only random enough for me and will not survive cryptanalysis
-	+ Does not generate any stdin/out, but will chew the network. 
 
 
 ### Use outboard crypto: viamillipede does not provide any armoring against interception or authentication

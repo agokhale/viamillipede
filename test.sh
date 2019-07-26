@@ -228,8 +228,8 @@ setup_rxhostgraph() {
               tx $rxhost9 $rxport  "
 }
 setup_common(){
-	txhost="kaylee.a.aeria.net"
-	rxhost="mal.a.aeria.net"
+	txhost="localhost"
+	rxhost="localhost"
 	txrsh="ssh root@$txhost "
 	rxrsh="ssh root@$rxhost "
 	setup_rxhostgraph

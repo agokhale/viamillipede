@@ -4,7 +4,7 @@
 #define ktimeout_granularity_usec (550256)
 #define ktimeout_stall_tolerance                                               \
   ((ktimeout_sec * 1000000) / ktimeout_granularity_usec)
-//use condvars
+// use condvars
 #define kv 1
 
 extern char *gcheckphrase;
@@ -20,12 +20,12 @@ void rxworker(struct rxworker_s *rxworker) {
   char checkphrase[] = "yoes";
   buffer = calloc(1, (size_t)kfootsize);
 #ifdef kv
-  assert(pthread_cond_init (  &rxworker->rxconf_parent->seq_cv, NULL) == 0); 
+  assert(pthread_cond_init(&rxworker->rxconf_parent->seq_cv, NULL) == 0);
   struct timespec stall_timespec;
   stall_timespec.tv_sec = 0;
-  stall_timespec.tv_nsec = 1000 * (ktimeout_granularity_usec );
+  stall_timespec.tv_nsec = 1000 * (ktimeout_granularity_usec);
 #endif
-  setproctitle ( " rx %d", rxworker->id);
+  setproctitle("rx %d", rxworker->id);
 
   while (!rxworker->rxconf_parent->done_mbox) {
     restartme = 0;
@@ -42,8 +42,9 @@ void rxworker(struct rxworker_s *rxworker) {
     read(rxworker->sockfd, buffer,
          (size_t)4); // XXX this is vulnerable to slow starts
     if (bcmp(buffer, gcheckphrase, 4) != 0) {
-      whisper(1, "rxw:%02d checkphrase failure. This connection is not for me. "
-                 "got: %x %x %x %x",
+      whisper(1,
+              "rxw:%02d checkphrase failure. This connection is not for me. "
+              "got: %x %x %x %x",
               rxworker->id, buffer[0], buffer[1], buffer[2], buffer[4]);
       exit(EDOM);
     }
@@ -82,8 +83,9 @@ void rxworker(struct rxworker_s *rxworker) {
           continue;
         };
         if (readlen < (sizeof(struct millipacket_s) - preamble_cursor)) {
-          whisper(7, "rx: short header %i(read)< %lu (headersize), preamble "
-                     "cursor: %i \n",
+          whisper(7,
+                  "rx: short header %i(read)< %lu (headersize), preamble "
+                  "cursor: %i \n",
                   readlen, sizeof(struct millipacket_s), preamble_cursor);
           checkperror("short read");
         }
@@ -112,6 +114,11 @@ void rxworker(struct rxworker_s *rxworker) {
           whisper(4, "rxw:%02i retired due to read len:%i errno:%i\n",
                   rxworker->id, readsize, errno);
           restartme = 1;
+          readsize = 0;
+          if (errno == ECONNRESET) { // 54 connection reset
+            whisper(5, "rx: will retry after con reset  errno: %i\n", errno);
+            errno = 0;
+          }
         }
         cursor += readsize;
         assert(cursor <= kfootsize);
@@ -136,7 +143,7 @@ void rxworker(struct rxworker_s *rxworker) {
       if (gprbs_seed > 0) {
         if (!prbs_verify((unsigned long *)buffer, gprbs_seed + pkt.leg_id,
                          kfootsize)) {
-          whisper(1, "prbs verification failure");
+          whisper(0, "prbs verification failure leg:%x", pkt.leg_id);
           exit(EDOOFUS);
         }
       }
@@ -159,10 +166,10 @@ void rxworker(struct rxworker_s *rxworker) {
       long sequencer_stalls = 0;
       while (pkt.leg_id != rxworker->rxconf_parent->next_leg && (!restartme)) {
 #ifdef kv
-        //pthread_cond_timedwait (&rxworker->rxconf_parent->seq_cv, 
-        //    &rxworker->rxconf_parent->rxmutex, &stall_timespec); 
-        pthread_cond_wait (&rxworker->rxconf_parent->seq_cv, 
-             &rxworker->rxconf_parent->rxmutex);
+        // pthread_cond_timedwait (&rxworker->rxconf_parent->seq_cv,
+        //    &rxworker->rxconf_parent->rxmutex, &stall_timespec);
+        pthread_cond_wait(&rxworker->rxconf_parent->seq_cv,
+                          &rxworker->rxconf_parent->rxmutex);
 #else
         pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
         usleep(ktimeout_granularity_usec);
@@ -180,18 +187,16 @@ void rxworker(struct rxworker_s *rxworker) {
       if (!restartme) {
         whisper(5, "rxw:%02i sequenced leg:%08lu[%08lu]after %05ld stalls\n",
                 rxworker->id, pkt.leg_id, pkt.size, sequencer_stalls);
-        if (!gprbs_seed) {
-          // we are verifying prbs, don't output
-          int writesize = 0;
-          struct iovec iov;
-          iov.iov_len = pkt.size;
-          iov.iov_base = (void *)buffer;
-          writesize = writev(rxworker->rxconf_parent->output_fd, &iov, 1);
-          whisper(19, "rxw: writev fd:%i siz:%ld",
-                  rxworker->rxconf_parent->output_fd, pkt.size);
-          checkperror("rxw:write buffer");
-          assert(writesize == pkt.size);
-        }
+
+        int writesize = 0;
+        struct iovec iov;
+        iov.iov_len = pkt.size;
+        iov.iov_base = (void *)buffer;
+        writesize = writev(rxworker->rxconf_parent->output_fd, &iov, 1);
+        whisper(19, "rxw: writev fd:%i siz:%ld",
+                rxworker->rxconf_parent->output_fd, pkt.size);
+        checkperror("rxw:write buffer");
+        assert(writesize == pkt.size);
         DTRACE_PROBE(viamillipede, leg__rx);
         if (pkt.opcode == end_of_millipede) {
           whisper(5, "rxw:%02i caught 0x%x done with last frame\n",

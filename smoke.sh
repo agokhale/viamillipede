@@ -20,6 +20,17 @@ dutbin=`mktemp "/tmp/vmpdbin.XXX"` || exit -11
 allcollateralfiles=$dutbin
 mv viamillipede $dutbin
 #____________________________________________________________________________
+t_est_zeros_reference() {
+echo referencezeros10g:
+output=`time dd if=/dev/zero  bs=2m count=5000 |  dd of=/dev/null bs=2m`
+echo $output
+}
+
+t_est_zeros_reference
+
+
+#____________________________________________________________________________
+
 t_est_loopback_trivial() {
 echo loopback:
 output=`echo asdf | $dutbin rx 4545 tx localhost 4545  threads 3`

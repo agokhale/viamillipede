@@ -1,9 +1,10 @@
 #include "util.h"
 #include "worker.h"
 #include <sys/socket.h>
+
+#ifdef CHAOS 
 extern unsigned long gchaos;
 extern unsigned long gchaoscounter;
-
 int chaos_fail() {
   // give up sometimes
   if ((gchaoscounter-- == 1) && gchaos) {
@@ -13,6 +14,9 @@ int chaos_fail() {
   }
   return (0);
 }
+#elseif 
+  #define chaos_fail  err;
+#endif
 
 ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
   /** read until a buffer completes or EOF
@@ -73,8 +77,14 @@ void stopwatch_start(struct timespec *t) {
 int stopwatch_stop(struct timespec *t, int whisper_channel) {
   //  stop the timer started at t
   // returns usec resolution diff of time
+  int retc = 1; 
   struct timespec stoptime;
-  assert(clock_gettime(CLOCK_UPTIME, &stoptime) == 0);
+  while ( retc !=0 ) {
+	retc = clock_gettime(CLOCK_UPTIME, &stoptime); 
+	// this can fail errno 4 EINTR
+  }
+  if ( errno == EINTR ) 
+      { errno =0;}
   time_t secondsdiff = stoptime.tv_sec - t->tv_sec;
   long nanoes = stoptime.tv_nsec - t->tv_nsec;
   // microoptimization trick to avoid a branch 

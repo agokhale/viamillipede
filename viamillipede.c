@@ -8,12 +8,16 @@ void usage() {
          "threads 3 verbose 3\n");
   printf("receiver:  vimillipede rx 12323 \n");
   printf("prbs:  vimillipede prbs 0xfeed \n");
+#ifdef CHAOS
   printf("add repeatable  failures:  vimillipede rx 12323  chaos 180002 \n");
+#endif
 }
 
 int gverbose = 0;
+#ifdef CHAOS
 unsigned long gchaos = 0;
 unsigned long gchaoscounter = 0;
+#endif
 unsigned long gprbs_seed = 0;
 int gchecksums = 0;
 int gcharmode = 0;
@@ -112,8 +116,9 @@ int main(int argc, char **argv) {
       assert(arg_cursor < argc && "checksums is a flag ");
       gchecksums = 1;
       checkperror(" main checksum -3 ");
-      whisper(11, "checksum set to %lu", gchaos);
+      whisper(11, "checksum set to %lu", gchecksums);
     }
+#ifdef CHAOS
     if (strcmp(argv[arg_cursor], "chaos") == 0) {
       assert(++arg_cursor < argc && "chaos  needs  ( 0 - max-ulong) ");
       gchaos = atoi(argv[arg_cursor]);
@@ -121,6 +126,7 @@ int main(int argc, char **argv) {
       checkperror(" main chaos -3 ");
       whisper(11, "chaos set to %lu", gchaos);
     }
+#endif
     if (strcmp(argv[arg_cursor], "checkphrase") == 0) {
       assert(++arg_cursor < argc && "checkphrase  needs  char[] ");
       gcheckphrase = argv[arg_cursor];

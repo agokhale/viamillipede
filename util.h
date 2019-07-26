@@ -6,7 +6,9 @@ extern int gverbose;
 ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode);
 void stopwatch_start(struct timespec *t);
 int stopwatch_stop(struct timespec *t, int whisper_channel);
+#ifdef CHAOS
 int chaos_fail();
+#endif
 unsigned long mix(unsigned int seed, void *data, unsigned long size);
 #define whisper(level, ...)                                                    \
   {                                                                            \

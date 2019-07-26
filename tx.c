@@ -143,9 +143,11 @@ int txpush(struct txworker_s *txworker) {
   while (txworker->writeremainder && retcode) {
     int minedsize = MIN(MAXBSIZE, txworker->writeremainder);
     tx_state_set(txworker, 'P'); // 'P'ush
+#ifdef CHAOS
     if (chaos_fail()) {
       close(txworker->sockfd); // things fail sometimes
     }
+#endif
     writelen =
         write(txworker->sockfd, ((txworker->buffer) + cursor), minedsize);
     if (errno != 0) {
