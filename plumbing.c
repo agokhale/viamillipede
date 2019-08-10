@@ -27,12 +27,11 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
   u_char *dest_cursor = dest;
   ssize_t accumulator = 0;
   ssize_t readsize;
-  ///fuseint fuse = 55; // don't spin  forever
   int sleep_thief = 0;
   assert(dest != NULL);
   do {
     if (errno != 0) {
-      whisper(3, "ignoring sir %i\n", errno);
+      whisper(3, "ignoring err %i\n", errno);
       checkperror("bufferfill nuiscance err");
       errno = 0;
     }
@@ -67,14 +66,12 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
       }
     }
   } while (remainder > 0);
-  //} while ((remainder > 0) && (fuse-- > 0));
-  //assert((fuse > 1) && "fuse blown");
   return (accumulator);
 }
 void stopwatch_start(struct timespec *t) {
   assert(clock_gettime(CLOCK_UPTIME, t) == 0);
 }
-int stopwatch_stop(struct timespec *t, int whisper_channel) {
+u_long stopwatch_stop(struct timespec *t, int whisper_channel) {
   //  stop the timer started at t
   // returns usec resolution diff of time
   int retc = 1; 

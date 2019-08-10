@@ -93,8 +93,8 @@ struct rxconf_s {
   int socknum;              // reusable bound socket number  later accepts
   unsigned short port;
   struct rxworker_s workers[kthreadmax];
-  int next_leg; // main sequencer to monotonically order legs to stdout
-  int done_mbox;
+  volatile u_long next_leg; // main sequencer to monotonically order legs to stdout
+  volatile int done_mbox;
   pthread_mutex_t rxmutex;
   pthread_cond_t seq_cv;
   int output_fd;

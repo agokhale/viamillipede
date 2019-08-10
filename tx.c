@@ -64,7 +64,7 @@ void txingest(struct txconf_s *txconf) {
   int readsize;
   int foot_cursor = 0;
   unsigned long saved_checksum = 0xff;
-  int ingest_leg_counter = 0;
+  u_long ingest_leg_counter = 0;
   txconf->stream_total_bytes = 0;
   whisper(16, "tx:ingest started on fd:%d", txconf->input_fd);
   checkperror("nuisancse ingest err");
@@ -80,7 +80,7 @@ void txingest(struct txconf_s *txconf) {
                             (u_char *)(txconf->workers[worker].buffer),
                             kfootsize, gcharmode);
       checkperror("ingest read");
-      whisper(9, "\ntxw:%02i read leg %i : fd:%i reqsiz:%i rsiz:%i\n", worker,
+      whisper(9, "\ntxw:%02i read leg %lx : fd:%i reqsiz:%x rsiz:%x\n", worker,
               ingest_leg_counter, txconf->input_fd, kfootsize, readsize);
       assert(readsize <= kfootsize);
     }
@@ -102,7 +102,7 @@ void txingest(struct txconf_s *txconf) {
       start_worker(&(txconf->workers[worker]));
       txconf->stream_total_bytes += readsize;
     } else {
-      whisper(4, "txingest: stdin exhausted. sending shutdown.");
+      whisper(6, "txingest: stdin exhausted. sending shutdown.");
       pthread_mutex_lock(&(txconf->mutex));
       txconf->done = 1;
       txconf->input_eof = 1;
@@ -116,7 +116,7 @@ void txingest(struct txconf_s *txconf) {
     pthread_mutex_lock(&(txconf->mutex));
   }
   pthread_mutex_unlock(&(txconf->mutex));
-  whisper(4, "tx:ingest complete for %lu(bytes) in \n\n",
+  whisper(4, "tx:ingest complete for %lx(bytes) in \n\n",
           txconf->stream_total_bytes);
   txstatus(txconf, 5);
   tx_rate_report();
@@ -152,13 +152,15 @@ int txpush(struct txworker_s *txworker) {
         write(txworker->sockfd, ((txworker->buffer) + cursor), minedsize);
     if (errno != 0) {
       // indicate that this needs retried
+      txstatus(txworker->txconf_parent, 7);
+      whisper(2," errno %i after write to socoket leg:%lx", errno, txworker->pkt.leg_id); 
       retcode = 0;
     };
     checkperror(" write to socket");
     tx_state_set(txworker, 'p'); // 'p'ush complete
     txworker->writeremainder -= writelen;
     cursor += writelen;
-    whisper(19, "txw:%02i psh leg:%lu.(+%i -%i)  ", txworker->id,
+    whisper(13, "txw:%02i psh leg:%lx.(+%x -%x)  ", txworker->id,
             txworker->pkt.leg_id, writelen, txworker->writeremainder);
   }
   checkperror("writesocket");
@@ -172,7 +174,7 @@ int txpush(struct txworker_s *txworker) {
     DTRACE_PROBE(viamillipede, leg__drop);
     tx_state_set(txworker,
                  'x'); // dead  do not transmit more; save state and do it again
-    whisper(7, "rxw:%02i is dead\n", txworker->id);
+    whisper(5, "rxw:%02i is dead\n", txworker->id);
   }
   pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
   return retcode;
@@ -387,7 +389,7 @@ void txstatus(struct txconf_s *txconf, int log_level) {
     if (i % 8 == 0) {
       whisper(log_level, "\n");
     }
-    whisper(log_level, "%c:%lu(%i)\t", tx_state(&txconf->workers[i]),
+    whisper(log_level, "%c:%lx(%x)\t", tx_state(&txconf->workers[i]),
             txconf->workers[i].pkt.leg_id,
             (txconf->workers[i].writeremainder) >> 10 // kbytes are sufficient
             );
@@ -459,6 +461,7 @@ void tx(struct txconf_s *txconf) {
   // start control channel
   stopwatch_start(&(txconf->ticker));
   signal(SIGINFO, &tx_rate_report);
+  signal(SIGPIPE, &tx_rate_report);
   signal(SIGINT, &partingshot);
   signal(SIGHUP, &partingshot);
   checkperror("nuisance setting signal");

@@ -58,6 +58,7 @@ int main(int argc, char **argv) {
   txconf.target_port_cursor = 0;
   ioconf.terminate_port = 0;
   ioconf.initiate_port = 0;
+  errno=0; // why, really why?!!!
   checkperror(" main nuiscance -0 ");
   while (arg_cursor < argc) {
     whisper(19, "  arg: %d, %s\n", arg_cursor, argv[arg_cursor]);
