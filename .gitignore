@@ -1,2 +1,15 @@
 obj/*
 .depend*
+cscope.out
+*.core
+dtrace_viamillipede.h
+dtrace_viamillipede.o
+plumbing.o
+prbs.o
+rx.o
+terminate.o
+tx.o
+viamillipede
+viamillipede.1.gz
+viamillipede.o
+
