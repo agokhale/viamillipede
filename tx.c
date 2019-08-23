@@ -231,7 +231,7 @@ int tx_start_net(struct txworker_s *txworker) {
       whisper(5, "txw:%02i reconnect success fd:%i\n", txworker->id,
               txworker->sockfd);
       errno = 0;
-      reconnect_fuse = kthreadmax;
+      reconnect_fuse = kreconnectlimit;
     }
     reconnect_fuse--;
   }
