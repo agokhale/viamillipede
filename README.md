@@ -5,7 +5,7 @@ Fast, resiliant, network transparent pipe tranport.
 Viamillipede is client/server program built to improve pipe transport across networks by using multiple TCP sessions. It demultiplexes stdin into multiple buffered TCP connectons and then terminates the connections into stdout on another host. Order is guaranteed and the pipe is transparent to the source/sink programs. It is as simple to use as Netcat and can generate large throughputs.
 
 #### Problems With existing approaches:
-TCP connections are fragile and IP employs best effort delivery to preserve its economy.  TCP was not engineered for performance, resiliance or longevity for a single flow.  Relying on a single TCP connection to succeed or perform is not defendable in software however there are many applications where losing a TCP session is expensive.
+TCP connections are fragile and IP employs best effort delivery to preserve its economy.  TCP was not engineered for performance, resiliance or longevity for a single flow.  Relying on a single TCP connection to succeed or perform is not defendable in software and there are many applications where losing a TCP session is expensive.
 
 ### typical pathology:
 ![alt text](series_is_trouble.svg "serialized operations show resistance")
@@ -25,6 +25,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
  + Flows are stuck on one L1/L2/L3 path.  This defeats the benefits of aggregation and multi-homed connections.
  + Alternate parallel transports are not pipe transparent and require significant configuration; eg: pftp, bittorrent, pNFS, ppcp
  + Your NOC will do maintenance in intervals shorter than your data migration windows. eg: I need to move a petabyte over the wan, but the router is booted every week. 
+ + Routers reset/drop/limit single flows for fun sometimes.
 
 #### Goals and Features of viamillipede:
 ![alt text](parallel.svg "parallel")
@@ -61,7 +62,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 
 ### Simple operation:
 + Start receiver with rx <portnum> and provide a stdout destination 
-+``` viamillipede rx 8834 > /tmp/despair  ```
++ ``` viamillipede rx 8834 > /tmp/despair  ```
 + Start transmitter with  tx <receiver_host> <portnum> and provide a stdin source
 + ``` cat /tmp/Osymandias  | viamillipede tx host1.yoyodyne.com 8834  ```
 	     
@@ -138,7 +139,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ deterministic for how many operations to allow before a failure
 	+ ``` viamillipede tx localhost 12334 chaos 1731```
 + checkphrase <char[4]> provide lightweight guard agaist a stale or orphaned reciever,
-	+ not a security/authenticatio mechanism
+	+ not a security/authentication mechanism
 	+ Transmitter and Reciever word[4] must match exactly.
 	+ ``` viamillipede tx localhost 12334 checkphrase wat!```
 	+ ``` viamillipede rx 12334 checkphrase wat!```
