@@ -1,10 +1,12 @@
 #include "worker.h"
 extern int gchecksums;
 extern int gcharmode;
+extern int gleg_limit;
 extern unsigned long gprbs_seed;
 extern char *gcheckphrase;
 void tx_rate_report();
 
+void txshutdown( struct txconf_s *txconf, int worker, u_long leg );
 char tx_state(struct txworker_s *txworker) {
   // wrap the state with a locking primatitve
   pthread_mutex_lock(&txworker->mutex);
@@ -80,11 +82,14 @@ void txingest(struct txconf_s *txconf) {
                             (u_char *)(txconf->workers[worker].buffer),
                             kfootsize, gcharmode);
       checkperror("ingest read");
-      whisper(9, "\ntxw:%02i read leg %lx : fd:%i reqsiz:%x rsiz:%x\n", worker,
+      whisper(19, "\ntxw:%02i read leg %lx : fd:%i reqsiz:%x rsiz:%x\n", worker,
               ingest_leg_counter, txconf->input_fd, kfootsize, readsize);
-      assert(readsize <= kfootsize);
     }
-    if (readsize > 0) {
+    if ( (gleg_limit > 0) && (gleg_limit == ingest_leg_counter) ) {
+      whisper(5, "txingest: leg limit reached  sending shutdown");
+      txshutdown( txconf, worker, ingest_leg_counter); 
+    }
+    else if (readsize > 0) {
       // find first idle worker , lock it and dispatch as separate calls --
       // perhaps
       txconf->workers[worker].pkt.size = readsize;
@@ -102,15 +107,8 @@ void txingest(struct txconf_s *txconf) {
       start_worker(&(txconf->workers[worker]));
       txconf->stream_total_bytes += readsize;
     } else {
-      whisper(6, "txingest: stdin exhausted. sending shutdown.");
-      pthread_mutex_lock(&(txconf->mutex));
-      txconf->done = 1;
-      txconf->input_eof = 1;
-      pthread_mutex_unlock(&(txconf->mutex));
-      txconf->workers[worker].pkt.size = 0;
-      txconf->workers[worker].pkt.leg_id = ingest_leg_counter;
-      txconf->workers[worker].pkt.opcode = end_of_millipede;
-      start_worker(&(txconf->workers[worker]));
+      whisper(5, "txingest: stdin exhausted. sending shutdown");
+      txshutdown( txconf, worker, ingest_leg_counter); 	
     }
     ingest_leg_counter++;
     pthread_mutex_lock(&(txconf->mutex));
@@ -122,6 +120,16 @@ void txingest(struct txconf_s *txconf) {
   tx_rate_report();
 }
 
+void txshutdown( struct txconf_s *txconf, int worker, u_long leg ) {
+  pthread_mutex_lock(&(txconf->mutex));
+  txconf->done = 1;
+  txconf->input_eof = 1;
+  pthread_mutex_unlock(&(txconf->mutex));
+  txconf->workers[worker].pkt.size = 0;
+  txconf->workers[worker].pkt.leg_id = leg;
+  txconf->workers[worker].pkt.opcode = end_of_millipede;
+  start_worker(&(txconf->workers[worker]));
+}
 int txpush(struct txworker_s *txworker) {
   /** push this buffer out the socket
   return 1 on success, 0 if retry is needed
@@ -295,7 +303,7 @@ void txworker_sm(struct txworker_s *txworker) {
        y cant lld inspect:
 
       */
-      whisper(4, "txw:%02i nothing left to do\n", txworker->id);
+      whisper(6, "txw:%02i nothing left to do\n", txworker->id);
       done = 1;
     }
     local_state = tx_state(txworker);

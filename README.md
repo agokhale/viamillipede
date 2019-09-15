@@ -147,6 +147,10 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+  ``` viamillipede prbs 0xd00f tx localhost 3434 rx 3434 ```
 	+ Will not terminate.
 	+ bitstream is only random enough for me and will not survive cryptanalysis
++ leglimit <long> stop after a number of legs
+	+ use to provide a bounded tranmission length
+	+ measureed in 2MiB chunks
+
 
 
 ### Use outboard crypto: viamillipede does not provide any armoring against interception or authentication
@@ -155,11 +159,18 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ from the tx host:` ssh -N -L 12323:localhost:12323 tunneluser@rxhost `
 	+ use mutiple port instances to  get parallelism
 	* use a trusted peers tcp encapuslation tunnel to offload crypto
++ use viamillipede to armour ssh connections
+	+ not reccomended for poor performance
+	+ for the target ``` viamillipede charmode initiate localhost 22 tx txhost 4545 rx 5555 ```
+	+ from the source ``` viamillipede charmode terminate 8022  tx rxhost 5555 rx 4545 ```
+	+ the use the alternate ssh port  on the source ``` ssh -p 8022 localhost ```
+
 + use openssl in  stream, take your crypto into your own hands
 	+ ` /usr/bin/openssl enc -aes-128-cbc -k swordfIIIsh -S 5A  `
 	+ choose a cipher that's binary transparent  
 	+ appropriate  paranoia vs. performance up to you
 	+ enigma, rot39, morse?
+
 ### Theory of operation
 ![alt text](theory_operation_viamillipede.svg "theory of operation")
 ### Future plans  `(*)` 

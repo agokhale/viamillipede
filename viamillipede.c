@@ -22,6 +22,7 @@ unsigned long gprbs_seed = 0;
 int gchecksums = 0;
 int gcharmode = 0;
 int ginitiator_oneshot = 0;
+int gleg_limit =0;
 char *gcheckphrase;
 struct txconf_s txconf;
 struct rxconf_s rxconf;
@@ -159,6 +160,12 @@ int main(int argc, char **argv) {
       arg_cursor++;
       gprbs_seed = strtoul(argv[arg_cursor], NULL, 0);
       whisper(11, "prbs mode seed %lu", gprbs_seed);
+    }
+    if (strcmp(argv[arg_cursor], "leglimit") == 0) {
+      mode |= MODE_PRBS;
+      arg_cursor++;
+      gleg_limit = strtoul(argv[arg_cursor], NULL, 0);
+      whisper(11, "legs limited to %lu", gprbs_seed);
     }
     arg_cursor++;
   }
