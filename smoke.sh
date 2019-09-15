@@ -1,14 +1,34 @@
-#!/bin/sh
+#!/bin/sh 
 
-verboarg="2"
+verboarg="5"
+timesource="HPET"
+timerfreq=`sysctl -n kern.timecounter.tc.${timesource}.frequency`
+threadcount=11
+
+
+test_setup() { 
+test_name=$1
+starttime=`sysctl -n kern.timecounter.tc.${timesource}.counter`
+size_mb=$2
+echo  ____________________________________________________________________________${test_name}________
+}
+test_setup dummy 10
+sleep 1
+
+test_fin ( ) {
+echo end
+endtime=`sysctl -n kern.timecounter.tc.${timesource}.counter`
+thrpt=`dc -e "3k ${size_mb}  ${endtime} ${starttime}  -  ${timerfreq} /  /  p"`
+echo "__________________________________________________________________${test_name} throughput:${thrpt}(mbps)"
+}
+test_fin dummy 
 
 fini() {
 echo "foom, cleaning up"
-rm -f  $allcollateralfiles
 echo "escaped prisoners still running:"
 pgrep vmpdbin
-
 kill $prisoners
+rm -f  $allcollateralfiles
 exit 0
 }
 trap fini  KILL INT TERM
@@ -21,41 +41,42 @@ allcollateralfiles=$dutbin
 mv viamillipede $dutbin
 #____________________________________________________________________________
 t_est_zeros_reference() {
-echo referencezeros10g:
-output=`time dd if=/dev/zero  bs=2m count=5000 |  dd of=/dev/null bs=2m`
+test_setup  referencezeros10g 10000
+output=`time dd if=/dev/zero  bs=2m count=5000 2>- |  dd of=/dev/null bs=2m `
 echo $output
+test_fin
 }
-
 t_est_zeros_reference
-
-
 #____________________________________________________________________________
 
 t_est_loopback_trivial() {
-echo loopback:
-output=`echo asdf | $dutbin rx 4545 tx localhost 4545  threads 3`
+test_setup loopback 0.001
+output=`echo asdf | $dutbin rx 4545 tx localhost 4545  threads  ${threadcount}`
 case $output in
  "asdf") break ;;
  *) exit -4;;
 esac
-
+test_fin
 }
 t_est_loopback_trivial
 #________________________________________________________________________
 t_est_prbs() {
- echo prbs:
- $dutbin prbs 0xd00f tx localhost 3434 verbose 4 threads 2 rx 3434 &
- prbpid=$!
- sleep 3 
- kill -INFO $prbpid
- sleep 0.2
-kill  $prbpid
+test_setup prbs 8192
+$dutbin charmode prbs 0xd00f tx localhost 3434 verbose 2 threads ${threadcount} \
+	rx 3434  leglimit 0x1000 > /dev/null 
+prbpid=$!
+#sleep 3 
+#kill -INFO $prbpid
+#sleep 0.2
+#kill  $prbpid
+echo
+test_fin
 }
 t_est_prbs
 #________________________________________________________________________
 dtflame()  {
 nau=`date +"%s"`
-$dutbin prbs 1 tx localhost 3434 verbose 3 threads 2 rx 3434 &
+$dutbin prbs 1 tx localhost 3434 verbose 3 threads ${threadcount} rx 3434 > /dev/null &
 prbpid=$!
 dtrace  -p`pgrep viamillipede` -qn'profile-333hz /execname == "viamillipede"/ { @[ustack()]=count();}' -o /tmp/viaustac$nau.ustacks &
 dtpid=$!
@@ -66,21 +87,25 @@ dtstackcollapse_flame.pl < /tmp/viaustac$nau.ustacks | flamegraph.pl > /net/dele
 }
 #________________________________________________________________________
 t_bearer_for_ssh() {
-	echo tunnel ssh over an fdx viamillipede this is probably a bad idea as ssh issues tinygrams and the system shoe shines around buffer sync trouble
-	$dutbin charmode threads 2 terminate 16622  tx localhost 4545 rx 4546  verbose $verboarg &
-	termpid=$!
-	sleep 1
-	$dutbin charmode threads 2 initiate localhost 22  tx localhost 4546 rx 4545  verbose $verboarg &
-	nitpid=$!
-	prisoners="$prisoners $nitpid $termpid"
-	sleep 3
-	ssh  -p 16622 localhost "dd if=/dev/zero bs=10m count=1" > /dev/null
-	prisoners="$prisoners $nitpid $termpid"
+echo tunnel ssh over an fdx viamillipede this is probably a bad idea 
+echo as ssh issues tinygrams and the system shoe shines around buffer sync trouble
+$dutbin charmode threads ${threadcount} terminate 16622  tx localhost 4545 rx 4546  verbose $verboarg &
+termpid=$!
+sleep 1
+$dutbin charmode threads ${threadcount} initiate localhost 22  tx localhost 4546 rx 4545  verbose $verboarg &
+nitpid=$!
+prisoners="$prisoners $nitpid $termpid"
+sleep 3
+test_setup t_bearer_for_ssh 64
+ssh  -p 16622 localhost "dd if=/dev/urandom bs=1m count=64"  |  dd of=/dev/null bs=1m
+test_fin
+prisoners="$prisoners $nitpid $termpid"
 }
 t_bearer_for_ssh
 #________________________________________________________________________
 t_ssh_as_bearer()  {
-echo tunnel viamillipede over multiple ssh tunnels this works handily and will happily boil your cpus doing parallel ssh expect 340mbps
+echo tunnel viamillipede over multiple ssh tunnels this works handily 
+echo and will happily boil your cpus doing parallel ssh expect 340mbps
 ssh -N  -L 16661:localhost:14545 localhost  & 
 sshpid1=$!
 ssh -N  -L 16662:localhost:14545 localhost  & 
@@ -88,14 +113,20 @@ sshpid2=$!
 $dutbin verbose $verboarg  rx 14545 > /dev/null &
 rxpid=!
 sleep 1
-dd if=/dev/zero bs=1g count=10 | $dutbin tx localhost 16661 tx localhost 16662 verbose $verboarg threads 2
+test_setup ssh_as_bearer 10000
+dd if=/dev/zero bs=1g count=10 | $dutbin tx localhost 16661 tx localhost 16662 verbose $verboarg threads ${threadcount} 
 prisoners="$sshpid1 $sshpid2 $rxpid $prisoners"
+test_fin
 }
-t_ssh_as_bearer
 
-#________________________________________________________________________
+t_ssh_as_bearer
+t_hotpath {
+test_setup hotpath 30000
 echo zeros over viamillipede, hot path test
-dd if=/dev/zero bs=1g count=30 | $dutbin threads 2 verbose 3 rx 4545 tx localhost 4545  > /dev/null
+dd if=/dev/zero bs=1g count=30 | $dutbin threads ${threadcount} verbose 3 rx 4545 tx localhost 4545  > /dev/null
+test_fin
+}
+t_hotpath
 #________________________________________________________________________
 
 fini

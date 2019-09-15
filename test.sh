@@ -1,60 +1,18 @@
-#!/bin/sh 
 #!/bin/sh -x
 pkill viamillipede
 which_test=${1:-default}
+test_time_start=`date +"%s"`
 
+clean_running_viamillipede() {
+	$rxrsh "pkill viamillipede"
+	$txrsh "pkill viamillipede"
+}
 catch_trap() {
         echo "caught trap pid $$  $* for $mytag -  cleaning up locks and dying"
-	pkill viamillipede
-	$rxrsh "pkill viamillipede"
-	$rxrsh "pkill viamillipede"
+	clean_running_vimillipede
 }
-#trap catch_trap TERM INT KILL BUS FPE 2 
+trap catch_trap TERM INT KILL BUS FPE 
 
-
-dddriver() {
-	# sizeinMB outfile infile
-	siz=${1:-"1"}
-	infile=${2:-"/dev/random"}
-	outfile=${3:-"/$txpool/$txdataset/rand$siz.MB.payload"}
-	echo "	  creating  random payload: $outfile"
-	remfilestatus=`$txrsh  "ls $outfile.md5"  | wc -c`
-	if [ '0'  -ne $remfilestatus  ]; then
-		echo skipping  existing$outfile
-	else
-		$txrsh "dd  if=$infile of=$outfile bs=1m count=$siz &&\
-		 	md5 $outfile  > $outfile.md5"
-	fi
-}
-
-makepayloadds () {
-	$txrsh " zfs create $txpool/payloads"
-}
-cleanpayloadds () {
-	$txrsh " zfs destroy -r $txpool/payloads "
-}
-
-makepayloads () {
-	makepayloadds
-	echo  " creating $howmuchpain painful inputs"
-	seq=`jot $howmuchpain 0  `  
-	for cursor in $seq 
-	do
-		siz=`dc -e "2 $cursor 4 * ^ p"` 
-		dddriver  $siz 
-	done
-	$txrsh "zfs snapshot  $txpool/$txdataset@initial"
-}
-
-zstreamref () {
-	ds="dozer/bbone@c"
-	target_ds="zz/sampletarget"
-	user="root"
-	rsh="ssh $user@$host "
-	$rsh  " zfs destroy -r  $target_ds"
-	#zfs send dozer/bbone@c | dd bs=8k | ssh root@delerium "zfs recv zz/bbt
-	zfs send $ds  | dd bs=8k | $rsh "zfs recv $target_ds" 
-}
 
 
 ncref () {
@@ -63,13 +21,16 @@ ncref () {
 	npid=$!
 	sleep 1;
 	time_start 	
-	dd if=/dev/zero bs=1m count=10000 |  nc -N localhost 12323 
+	dd if=/dev/zero bs=1g count=10 |  nc -N localhost 12323 
 	time_stop "nc_ref"
 }
 install_bin () {
 	echo cleaning bins
 	make clean; make || exit 2
-	$txrsh "pkill viamillipede; rm -f /tmp/viamillipede" 
+	albin="/tmp/viamill.alice.$test_timestart";
+	bobin="/tmp/viamill.bob.$test_timestart";
+
+	$txrsh "pkill viamil.alias; rm -f /tmp/viamillipede" 
 	$rxrsh "pkill viamillipede; rm -f /tmp/viamillipede" 
 	cat viamillipede | $txrsh " cat -  > /tmp/viamillipede"  
 	cat viamillipede | $rxrsh " cat -  > /tmp/viamillipede" 
@@ -97,7 +58,6 @@ smoke() {
 
 setup_checkphrase() {
 	# seems that hosts that dont respond stall the connect routine
-	pkill viamillipede
 	$rxrsh "/tmp/viamillipede verbose 3 checkphrase tuuW  rx 12323 > /dev/null" &
 	vrxpid=$!
 	echo this fails. let it. dont die
@@ -120,7 +80,6 @@ setup_hotpath() {
 	#hotpath took 11(s)
 }
 deaddetect() {
-	pkill viamillipede
 	$rxrsh " /tmp/viamillipede verbose 4  rx 12323 > /dev/null" &
 	vrxpid=$!
 	time_start
@@ -128,7 +87,6 @@ deaddetect() {
 	time_stop "deaddetect"
 	}
 deaddetect_extended() {
-	pkill viamillipede
 	$rxrsh " /tmp/viamillipede verbose 4  rx 12323  > /dev/null " &
 	vrxpid=$!
 	time_start
@@ -190,49 +148,13 @@ setup_smoke() {
 
 
 
-setup_grand() {
-	txpool="dozer"
-	txdataset="payloads"
-	txsnapshot="intial"
-	time_start 
-	$txrsh "true"
-	time_stop trvialcommand
-	#makepayloads
-	zsend_shunt
-	# populate expectedmd5
-	zsend_dd_shunt
-	ncref
-	thread_counts=`jot 16 1`
-	setup_common
-	payload_generator="zfs send $txpool/$txdataset@initial"
-	for thread_count in $thread_counts 
-	do 
-		smoke " $payload_generator "  " | md5 "  2 $thread_count
-		check_output
-	done
-	#$cleanpayloadds
-}
-
-setup_rxhostgraph() {
-	rxhost2="192.168.238.1"
-	rxhost3="192.168.238.2"
-	rxhost4="192.168.238.3"
-	rxhost5="192.168.238.4"
-	rxhost6="192.168.238.5"
-	rxhost7="192.168.238.6"
-	rxhost8="192.168.238.8"
-	rxhost9="192.168.238.9"
-	rxport=12323
-	rxhost_graph="tx $rxhost2 $rxport tx $rxhost3 $rxport tx $rxhost4 $rxport \
-              tx $rxhost5 $rxport tx $rxhost6 $rxport tx $rxhost7 $rxport tx $rxhost8 $rxport \
-              tx $rxhost9 $rxport  "
-}
 setup_common(){
 	txhost="localhost"
 	rxhost="localhost"
-	txrsh="ssh root@$txhost "
-	rxrsh="ssh root@$rxhost "
+	txrsh="ssh $txhost "
+	rxrsh="ssh $rxhost "
 	setup_rxhostgraph
+	clean_running_vimillipede
 	install_bin
 }
 
@@ -241,9 +163,10 @@ setup_default() {
 	tiny
 	ncref
 	deaddetect
+	clean_running_vimillipede
 	deaddetect_extended
-	setup_grand
-	setup_hotpath
+	#setup_grand
+	#setup_hotpath
 }
 setup_common
 setup_$which_test
