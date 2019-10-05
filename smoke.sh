@@ -27,6 +27,7 @@ fini() {
 echo "foom, cleaning up"
 echo "escaped prisoners still running:"
 pgrep vmpdbin
+pkill vmpdbin
 kill $prisoners
 rm -f  $allcollateralfiles
 exit 0
@@ -42,7 +43,8 @@ mv viamillipede $dutbin
 #____________________________________________________________________________
 t_est_zeros_reference() {
 test_setup  referencezeros10g 10000
-output=`time dd if=/dev/zero  bs=2m count=5000 2>- |  dd of=/dev/null bs=2m `
+#output=`time dd if=/dev/zero  bs=2m count=5000 2>- |  dd of=/dev/null bs=2m `
+output=`time dd if=/dev/zero  bs=2m count=5000 2>- |  pv -s 10g > /dev/null `
 echo $output
 test_fin
 }
@@ -63,7 +65,8 @@ t_est_loopback_trivial
 t_est_prbs() {
 test_setup prbs 8192
 $dutbin charmode prbs 0xd00f tx localhost 3434 verbose 2 threads ${threadcount} \
-	rx 3434  leglimit 0x1000 > /dev/null 
+	rx 3434  leglimit 0x1000  delayus 20 \
+	 | pv -s8192m > /dev/null
 prbpid=$!
 #sleep 3 
 #kill -INFO $prbpid
@@ -73,6 +76,18 @@ echo
 test_fin
 }
 t_est_prbs
+#________________________________________________________________________
+t_est_delay() {
+test_setup delay 8
+$dutbin charmode prbs 0xd00f tx localhost 3434 verbose 2 threads ${threadcount} \
+	rx 3434  leglimit 4 delayus 500000  \
+	 | pv -s8m > /dev/null
+prbpid=$!
+echo
+test_fin
+}
+t_est_delay
+exit
 #________________________________________________________________________
 dtflame()  {
 nau=`date +"%s"`
@@ -97,7 +112,7 @@ nitpid=$!
 prisoners="$prisoners $nitpid $termpid"
 sleep 3
 test_setup t_bearer_for_ssh 64
-ssh  -p 16622 localhost "dd if=/dev/urandom bs=1m count=64"  |  dd of=/dev/null bs=1m
+ssh  -p 16622 localhost "dd if=/dev/urandom bs=1m count=64"  |  pv -s 64 > /dev/null
 test_fin
 prisoners="$prisoners $nitpid $termpid"
 }
@@ -110,20 +125,21 @@ ssh -N  -L 16661:localhost:14545 localhost  &
 sshpid1=$!
 ssh -N  -L 16662:localhost:14545 localhost  & 
 sshpid2=$!
-$dutbin verbose $verboarg  rx 14545 > /dev/null &
+$dutbin verbose 5  rx 14545  | pv -s10g  /dev/null &
 rxpid=!
 sleep 1
 test_setup ssh_as_bearer 10000
-dd if=/dev/zero bs=1g count=10 | $dutbin tx localhost 16661 tx localhost 16662 verbose $verboarg threads ${threadcount} 
+dd if=/dev/zero bs=1g count=10 | $dutbin tx localhost 16661 tx localhost 16662 verbose $verboarg threads 2
 prisoners="$sshpid1 $sshpid2 $rxpid $prisoners"
 test_fin
 }
-
 t_ssh_as_bearer
-t_hotpath {
+
+t_hotpath() {
 test_setup hotpath 30000
 echo zeros over viamillipede, hot path test
-dd if=/dev/zero bs=1g count=30 | $dutbin threads ${threadcount} verbose 3 rx 4545 tx localhost 4545  > /dev/null
+dd if=/dev/zero bs=1g count=30 | $dutbin threads ${threadcount} verbose 3 rx 4545 tx localhost 4545  |
+	pv -s30g > /dev/null
 test_fin
 }
 t_hotpath

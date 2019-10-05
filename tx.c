@@ -4,6 +4,7 @@ extern int gcharmode;
 extern int gleg_limit;
 extern unsigned long gprbs_seed;
 extern char *gcheckphrase;
+extern u_long gdelay_us;
 void tx_rate_report();
 
 void txshutdown( struct txconf_s *txconf, int worker, u_long leg );
@@ -156,12 +157,16 @@ int txpush(struct txworker_s *txworker) {
       close(txworker->sockfd); // things fail sometimes
     }
 #endif
+    if (errno != 0) {
+      whisper(2,"nuisance errno %i before write to socket leg:%lx", errno, txworker->pkt.leg_id); 
+    }
+    if(gdelay_us)  usleep(gdelay_us); 
     writelen =
         write(txworker->sockfd, ((txworker->buffer) + cursor), minedsize);
     if (errno != 0) {
       // indicate that this needs retried
       txstatus(txworker->txconf_parent, 7);
-      whisper(2," errno %i after write to socoket leg:%lx", errno, txworker->pkt.leg_id); 
+      whisper(2," errno %i after write to socket leg:%lx", errno, txworker->pkt.leg_id); 
       retcode = 0;
     };
     checkperror(" write to socket");

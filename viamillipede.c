@@ -4,8 +4,9 @@
 void usage() {
   printf("viamillipede scatter gather multiplexed tcp for pipe transport "
          "between hosts usage: \n");
-  printf("transmitter:  vimillipede tx 192.168.0.2 12323  tx 192.168.0.3 12323 "
-         "threads 3 verbose 3\n");
+  printf("loopback+stress:  viamillipede tx l27.0.0.1 12323 "
+         "threads 3 verbose 3 rx 12323 "
+         " leglimit 50 prbs 0x5aa5  delayus 50 \n");
   printf("receiver:  vimillipede rx 12323 \n");
   printf("prbs:  vimillipede prbs 0xfeed \n");
 #ifdef CHAOS
@@ -19,6 +20,7 @@ unsigned long gchaos = 0;
 unsigned long gchaoscounter = 0;
 #endif
 unsigned long gprbs_seed = 0;
+unsigned long gdelay_us = 0; // per buffer ingest delay
 int gchecksums = 0;
 int gcharmode = 0;
 int ginitiator_oneshot = 0;
@@ -119,6 +121,13 @@ int main(int argc, char **argv) {
       gchecksums = 1;
       checkperror(" main checksum -3 ");
       whisper(11, "checksum set to %d", gchecksums);
+    }
+    if (strcmp(argv[arg_cursor], "delayus") == 0) {
+      arg_cursor++;
+      assert(arg_cursor < argc && "delayus needs a uint ");
+      gdelay_us = atoi(argv[arg_cursor]);
+      checkperror(" main delay -3 ");
+      whisper(11, "gdelay_us set to %lu", gdelay_us);
     }
 #ifdef CHAOS
     if (strcmp(argv[arg_cursor], "chaos") == 0) {
