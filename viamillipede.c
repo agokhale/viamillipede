@@ -1,6 +1,13 @@
 #include "cfg.h"
 #include "worker.h"
 
+void verbose_plus () {
+  gverbose++;
+}
+void verbose_minus () {
+  gverbose --;
+}
+
 void usage() {
   printf("viamillipede scatter gather multiplexed tcp for pipe transport "
          "between hosts usage: \n");
@@ -211,6 +218,8 @@ int main(int argc, char **argv) {
       rxpoll_done = 1;
     usleep(333);
   }
+  signal ( SIGUSR1, &verbose_plus );
+  signal ( SIGUSR2, &verbose_minus );
   whisper(15, "finished normally");
   exit(0);
 }
