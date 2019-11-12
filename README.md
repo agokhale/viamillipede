@@ -119,6 +119,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ this will result in very expensive operations and speed will suffer for tinygram writes
 + verbose  <0-20+>, 
 	+ transmitter or receiver
+	+ SIGUSR1/2 will increase/decrease verbosity
 	+ ``` viamillipede rx 8834   verbose 5 ```
 + threads <1-16> control worker thread count 
 	+ set only on transmitter
