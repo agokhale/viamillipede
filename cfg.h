@@ -13,8 +13,8 @@
 #include <sys/param.h>
 #include <sys/socket.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <sys/uio.h>
+#include <unistd.h>
 
 #include "util.h"
 #include <signal.h>
@@ -93,7 +93,8 @@ struct rxconf_s {
   int socknum;              // reusable bound socket number  later accepts
   unsigned short port;
   struct rxworker_s workers[kthreadmax];
-  volatile u_long next_leg; // main sequencer to monotonically order legs to stdout
+  volatile u_long
+      next_leg; // main sequencer to monotonically order legs to stdout
   volatile int done_mbox;
   pthread_mutex_t rxmutex;
   pthread_cond_t seq_cv;

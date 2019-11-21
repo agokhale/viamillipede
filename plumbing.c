@@ -2,7 +2,7 @@
 #include "worker.h"
 #include <sys/socket.h>
 
-#ifdef CHAOS 
+#ifdef CHAOS
 extern unsigned long gchaos;
 extern unsigned long gchaoscounter;
 int chaos_fail() {
@@ -14,8 +14,8 @@ int chaos_fail() {
   }
   return (0);
 }
-#elseif 
-  #define chaos_fail  err;
+#elseif
+#define chaos_fail err;
 #endif
 
 ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
@@ -74,23 +74,24 @@ void stopwatch_start(struct timespec *t) {
 u_long stopwatch_stop(struct timespec *t, int whisper_channel) {
   //  stop the timer started at t
   // returns usec resolution diff of time
-  int retc = 1; 
+  int retc = 1;
   struct timespec stoptime;
-  while ( retc !=0 ) {
-	retc = clock_gettime(CLOCK_UPTIME, &stoptime); 
-	// this can fail errno 4 EINTR
+  while (retc != 0) {
+    retc = clock_gettime(CLOCK_UPTIME, &stoptime);
+    // this can fail errno 4 EINTR
   }
-  if ( errno == EINTR ) 
-      { errno =0;}
+  if (errno == EINTR) {
+    errno = 0;
+  }
   time_t secondsdiff = stoptime.tv_sec - t->tv_sec;
   long nanoes = stoptime.tv_nsec - t->tv_nsec;
-  // microoptimization trick to avoid a branch 
+  // microoptimization trick to avoid a branch
   // borrow a billion seconds
   nanoes += 1000000000;
   secondsdiff--;
-  //rely on truncation to correct the seconds place
+  // rely on truncation to correct the seconds place
   secondsdiff += nanoes / 1000000000;
-  /* simple way relies on a branch 
+  /* simple way relies on a branch
   if (nanoes < 0) {
     // borrow billions place nanoseconds to come up true
     nanoes += 1000000000;

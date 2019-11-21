@@ -115,7 +115,7 @@ void rxworker(struct rxworker_s *rxworker) {
                   rxworker->id, pkt.leg_id, readsize, errno);
           restartme = 1;
           readsize = 0; // a -1 would really confuse the remainder algo
-          if (errno == ECONNRESET || errno == EPIPE ) { // 54 connection reset 
+          if (errno == ECONNRESET || errno == EPIPE) { // 54 connection reset
             whisper(5, "rx: will retry after con reset  errno: %i\n", errno);
             errno = 0;
           }
@@ -137,10 +137,11 @@ void rxworker(struct rxworker_s *rxworker) {
                 pkt.leg_id, readsize >> 10, remainder >> 10,
                 ((remainder_counter++) % 16 == 0) ? (int)10 : (int)' ');
       }
-      whisper(10, "\nrxw:%02x leg:%lx buffer filled to :%x wating  on leg:%lx\n", rxworker->id,
-              pkt.leg_id, cursor, rxworker->rxconf_parent->next_leg);
+      whisper(
+          10, "\nrxw:%02x leg:%lx buffer filled to :%x wating  on leg:%lx\n",
+          rxworker->id, pkt.leg_id, cursor, rxworker->rxconf_parent->next_leg);
 
-      if (gprbs_seed > 0 && !restartme ) {
+      if (gprbs_seed > 0 && !restartme) {
         if (!prbs_verify((unsigned long *)buffer, gprbs_seed + pkt.leg_id,
                          kfootsize)) {
           whisper(1, "prbs verification failure leg:%lx", pkt.leg_id);
@@ -164,22 +165,25 @@ void rxworker(struct rxworker_s *rxworker) {
       better so declare an error and exit
       */
       long sequencer_stalls = 0;
-      
+
       pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
       while (pkt.leg_id != rxworker->rxconf_parent->next_leg && (!restartme)) {
-        int kvret =0;
+        int kvret = 0;
         kvret = pthread_cond_wait(&rxworker->rxconf_parent->seq_cv,
-                          &rxworker->rxconf_parent->rxmutex);
-        if  ( kvret != 0 ) { whisper (3, "kv error %i", kvret);  assert(0);}
+                                  &rxworker->rxconf_parent->rxmutex);
+        if (kvret != 0) {
+          whisper(3, "kv error %i", kvret);
+          assert(0);
+        }
         pthread_mutex_lock(
             &rxworker->rxconf_parent
                  ->rxmutex); // do nothing but compare seqeuncer under lock
       }
       pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
       if (!restartme) {
-        
-        whisper(5, "rxw:%02i sequenced leg:%lx[%lx]\n",
-                rxworker->id, pkt.leg_id, pkt.size);
+
+        whisper(5, "rxw:%02i sequenced leg:%lx[%lx]\n", rxworker->id,
+                pkt.leg_id, pkt.size);
 
         int writesize = 0;
         struct iovec iov;

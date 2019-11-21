@@ -1,12 +1,8 @@
 #include "cfg.h"
 #include "worker.h"
 
-void verbose_plus () {
-  gverbose++;
-}
-void verbose_minus () {
-  gverbose --;
-}
+void verbose_plus() { gverbose++; }
+void verbose_minus() { gverbose--; }
 
 void usage() {
   printf("viamillipede scatter gather multiplexed tcp for pipe transport "
@@ -31,7 +27,7 @@ unsigned long gdelay_us = 0; // per buffer ingest delay
 int gchecksums = 0;
 int gcharmode = 0;
 int ginitiator_oneshot = 0;
-int gleg_limit =0;
+int gleg_limit = 0;
 char *gcheckphrase;
 struct txconf_s txconf;
 struct rxconf_s rxconf;
@@ -68,7 +64,7 @@ int main(int argc, char **argv) {
   txconf.target_port_cursor = 0;
   ioconf.terminate_port = 0;
   ioconf.initiate_port = 0;
-  errno=0; // why, really why?!!!
+  errno = 0; // why, really why?!!!
   checkperror(" main nuiscance -0 ");
   while (arg_cursor < argc) {
     whisper(19, "  arg: %d, %s\n", arg_cursor, argv[arg_cursor]);
@@ -218,8 +214,8 @@ int main(int argc, char **argv) {
       rxpoll_done = 1;
     usleep(333);
   }
-  signal ( SIGUSR1, &verbose_plus );
-  signal ( SIGUSR2, &verbose_minus );
+  signal(SIGUSR1, &verbose_plus);
+  signal(SIGUSR2, &verbose_minus);
   whisper(15, "finished normally");
   exit(0);
 }

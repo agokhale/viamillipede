@@ -7,7 +7,7 @@ extern char *gcheckphrase;
 extern u_long gdelay_us;
 void tx_rate_report();
 
-void txshutdown( struct txconf_s *txconf, int worker, u_long leg );
+void txshutdown(struct txconf_s *txconf, int worker, u_long leg);
 char tx_state(struct txworker_s *txworker) {
   // wrap the state with a locking primatitve
   pthread_mutex_lock(&txworker->mutex);
@@ -86,11 +86,10 @@ void txingest(struct txconf_s *txconf) {
       whisper(19, "\ntxw:%02i read leg %lx : fd:%i reqsiz:%x rsiz:%x\n", worker,
               ingest_leg_counter, txconf->input_fd, kfootsize, readsize);
     }
-    if ( (gleg_limit > 0) && (gleg_limit == ingest_leg_counter) ) {
+    if ((gleg_limit > 0) && (gleg_limit == ingest_leg_counter)) {
       whisper(5, "txingest: leg limit reached  sending shutdown");
-      txshutdown( txconf, worker, ingest_leg_counter); 
-    }
-    else if (readsize > 0) {
+      txshutdown(txconf, worker, ingest_leg_counter);
+    } else if (readsize > 0) {
       // find first idle worker , lock it and dispatch as separate calls --
       // perhaps
       txconf->workers[worker].pkt.size = readsize;
@@ -109,7 +108,7 @@ void txingest(struct txconf_s *txconf) {
       txconf->stream_total_bytes += readsize;
     } else {
       whisper(5, "txingest: stdin exhausted. sending shutdown");
-      txshutdown( txconf, worker, ingest_leg_counter); 	
+      txshutdown(txconf, worker, ingest_leg_counter);
     }
     ingest_leg_counter++;
     pthread_mutex_lock(&(txconf->mutex));
@@ -121,7 +120,7 @@ void txingest(struct txconf_s *txconf) {
   tx_rate_report();
 }
 
-void txshutdown( struct txconf_s *txconf, int worker, u_long leg ) {
+void txshutdown(struct txconf_s *txconf, int worker, u_long leg) {
   pthread_mutex_lock(&(txconf->mutex));
   txconf->done = 1;
   txconf->input_eof = 1;
@@ -158,15 +157,18 @@ int txpush(struct txworker_s *txworker) {
     }
 #endif
     if (errno != 0) {
-      whisper(2,"nuisance errno %i before write to socket leg:%lx", errno, txworker->pkt.leg_id); 
+      whisper(2, "nuisance errno %i before write to socket leg:%lx", errno,
+              txworker->pkt.leg_id);
     }
-    if(gdelay_us)  usleep(gdelay_us); 
+    if (gdelay_us)
+      usleep(gdelay_us);
     writelen =
         write(txworker->sockfd, ((txworker->buffer) + cursor), minedsize);
     if (errno != 0) {
       // indicate that this needs retried
       txstatus(txworker->txconf_parent, 7);
-      whisper(2," errno %i after write to socket leg:%lx", errno, txworker->pkt.leg_id); 
+      whisper(2, " errno %i after write to socket leg:%lx", errno,
+              txworker->pkt.leg_id);
       retcode = 0;
     };
     checkperror(" write to socket");
@@ -226,8 +228,9 @@ int tx_start_net(struct txworker_s *txworker) {
     if (txworker->txconf_parent->done) {
       pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
       tx_state_set(txworker, 'f');
-      whisper(2, "txw:%02d ingest done reconnect not required anymore; giving "
-                 "up thread\n",
+      whisper(2,
+              "txw:%02d ingest done reconnect not required anymore; giving "
+              "up thread\n",
               txworker->id);
       pthread_exit(0);
     }
@@ -405,7 +408,7 @@ void txstatus(struct txconf_s *txconf, int log_level) {
     whisper(log_level, "%c:%lx(%x)\t", tx_state(&txconf->workers[i]),
             txconf->workers[i].pkt.leg_id,
             (txconf->workers[i].writeremainder) >> 10 // kbytes are sufficient
-            );
+    );
   }
   whisper(log_level, "\n");
 }

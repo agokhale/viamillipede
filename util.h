@@ -1,7 +1,7 @@
 #ifndef utilh
 #define utilh
-#include <sys/types.h>
 #include <sys/sdt.h>
+#include <sys/types.h>
 extern int gverbose;
 ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode);
 void stopwatch_start(struct timespec *t);
