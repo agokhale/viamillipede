@@ -1,45 +1,63 @@
 #!/bin/sh 
 
+morinfo() {
+	echo moar
+	set -x
+}
+trap morinfo  INFO
+
+start_epochtime=`date +"%s"`
+odir=`mktemp  -d  /tmp/viamillipede-smoke-${start_epochtime}.XXX`
 verboarg="5"
 timesource="HPET"
 timerfreq=`sysctl -n kern.timecounter.tc.${timesource}.frequency`
-threadcount=11
-
+threadcount=`sysctl -n hw.ncpu`
 
 test_setup() { 
-test_name=$1
-starttime=`sysctl -n kern.timecounter.tc.${timesource}.counter`
-size_mb=$2
-echo  ____________________________________________________________________________${test_name}________
+	test_name=$1
+	size_mb=$2
+	starttime=`sysctl -n kern.timecounter.tc.${timesource}.counter`
+	testoutrdirfile="${odir}/${test_name}.testout"
+	echo " ____________________________________________________________________________${test_name}________" 
 }
-test_setup dummy 10
-sleep 1
 
-test_fin ( ) {
-echo end
-endtime=`sysctl -n kern.timecounter.tc.${timesource}.counter`
-thrpt=`dc -e "3k ${size_mb}  ${endtime} ${starttime}  -  ${timerfreq} /  /  p"`
-echo "__________________________________________________________________${test_name} throughput:${thrpt}(mbps)"
+
+get_testname() {
+  echo $(test_name)
 }
-test_fin dummy 
+test_fin ( ) {
+#args: size_mb starttime timerfreq
+	echo end
+	endtime=`sysctl -n kern.timecounter.tc.${timesource}.counter`
+	thrpt=`dc -e "3k ${size_mb}  ${endtime} ${starttime}  -  ${timerfreq} /  /  p"`
+	echo "__________________________________________________________________${test_name} throughput:${thrpt} (MBps)"
+}
 
 fini() {
-echo "foom, cleaning up"
-echo "escaped prisoners still running:"
-pgrep vmpdbin
-pkill vmpdbin
-kill $prisoners
-rm -f  $allcollateralfiles
-exit 0
+	echo "foom, cleaning up"
+	echo "escaped prisoners still running:"
+	pgrep vmpdbin
+	pkill vmpdbin
+	kill $prisoners
+	exit 0
 }
 trap fini  KILL INT TERM
 #____________________________________________________________________________
-#build it, stash the binary somewhere dangerous
+#build it, stash the binary somewhere safe
 make clean 
-make  || exit  -1
-dutbin=`mktemp "/tmp/vmpdbin.XXX"` || exit -11
+make  || exit  -101
+git diff >  ${odir}/diff
+dutbin=`mktemp "${odir}/vmpdbin.XXX"` || exit -11
 allcollateralfiles=$dutbin
 mv viamillipede $dutbin
+
+#____________________________________________________________________________
+t_est_dummy(){
+test_setup dummy 10
+sleep 1
+test_fin dummy 
+}
+
 #____________________________________________________________________________
 t_est_zeros_reference() {
 test_setup  referencezeros10g 10000
@@ -61,12 +79,13 @@ esac
 test_fin
 }
 t_est_loopback_trivial
+
 #________________________________________________________________________
 t_est_prbs() {
-test_setup prbs 8192
-$dutbin charmode prbs 0xd00f tx localhost 3434 verbose 2 threads ${threadcount} \
-	rx 3434  leglimit 0x1000  delayus 20 \
-	 | pv -s8192m > /dev/null
+test_setup prbs 4096
+$dutbin charmode verbose 0 prbs 0xd00f tx localhost 3434  threads ${threadcount} \
+	rx 3434  leglimit 0x800  delayus 20 \
+	 | pv -s4096 > /dev/null
 prbpid=$!
 #sleep 3 
 #kill -INFO $prbpid
@@ -130,11 +149,11 @@ rxpid=!
 sleep 1
 test_setup ssh_as_bearer 10000
 dd if=/dev/zero bs=1g count=10 | $dutbin tx localhost 16661 tx localhost 16662 verbose $verboarg threads 2
-prisoners="$sshpid1 $sshpid2 $rxpid $prisoners"
+prisoners="${sshpid1} ${sshpid2} ${rxpid} ${prisoners} "
 test_fin
 }
 t_ssh_as_bearer
-
+#________________________________________________________________________
 t_hotpath() {
 test_setup hotpath 30000
 echo zeros over viamillipede, hot path test
