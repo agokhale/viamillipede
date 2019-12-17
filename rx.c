@@ -144,8 +144,12 @@ void rxworker(struct rxworker_s *rxworker) {
       if (gprbs_seed > 0 && !restartme) {
         if (!prbs_verify((unsigned long *)buffer, gprbs_seed + pkt.leg_id,
                          kfootsize)) {
-          whisper(1, "prbs verification failure leg:%lx", pkt.leg_id);
-          exit(EDOOFUS);
+          if (pkt.opcode == end_of_millipede) {
+            whisper(3, "prbs verification complete leg:%lx", pkt.leg_id);
+          } else {
+            whisper(1, "prbs verification failure leg:%lx", pkt.leg_id);
+            exit(EDOOFUS);
+          }
         }
       }
 
