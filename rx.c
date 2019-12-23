@@ -19,6 +19,7 @@ void rxworker(struct rxworker_s *rxworker) {
   char okphrase[] = "ok";
   char checkphrase[] = "yoes";
   buffer = calloc(1, (size_t)kfootsize);
+  rxworker->state='i';
 #ifdef kv
   assert(pthread_cond_init(&rxworker->rxconf_parent->seq_cv, NULL) == 0);
   struct timespec stall_timespec;
@@ -34,6 +35,8 @@ void rxworker(struct rxworker_s *rxworker) {
     whisper(7, "rxw:%02i accepting and locked\n", rxworker->id);
     rxworker->sockfd = tcp_accept(&(rxworker->rxconf_parent->sa),
                                   rxworker->rxconf_parent->socknum);
+    rxworker->rxconf_parent->workercount++;
+    rxworker->state='a';
     whisper(5, "rxw:%02i accepted fd:%i \n", rxworker->id, rxworker->sockfd);
     DTRACE_PROBE1(viamillipede, worker__connected, rxworker->sockfd);
     pthread_mutex_unlock(&rxworker->rxconf_parent->sa_mutex);
@@ -52,6 +55,7 @@ void rxworker(struct rxworker_s *rxworker) {
     if (write(rxworker->sockfd, okphrase, (size_t)2) != 2) {
       exit(ENOTCONN);
     }
+    rxworker->state='s';
     checkperror("signaturewrite ");
     // /usr/src/contrib/netcat has a nice pipe input routine XXX perhaps lift it
     while (!rxworker->rxconf_parent->done_mbox && (!restartme)) {
@@ -69,6 +73,7 @@ void rxworker(struct rxworker_s *rxworker) {
         struct iovec rxiov;
         rxiov.iov_len = (sizeof(struct millipacket_s) - preamble_cursor);
         rxiov.iov_base = ((u_char *)&pkt) + preamble_cursor;
+        rxworker->state='a';
         readlen = readv(rxworker->sockfd, &rxiov, 1);
         checkperror("preamble read");
         whisper(
@@ -101,18 +106,22 @@ void rxworker(struct rxworker_s *rxworker) {
       assert(pkt.preamble == preamble_cannon_ul && "preamble check");
       assert(pkt.size >= 0);
       assert(pkt.size <= kfootsize);
+      rxworker->leg=pkt.leg_id; 
+      rxworker->legop=pkt.opcode; 
       whisper(9, "rxw:%02i leg:%lx siz:%lu op:%x caught new leg\n",
               rxworker->id, pkt.leg_id, pkt.size, pkt.opcode);
       int remainder = pkt.size;
       int remainder_counter = 0;
       assert(remainder <= kfootsize);
       while (remainder && (!restartme)) {
+        rxworker->state='r';
         readsize =
             read(rxworker->sockfd, buffer + cursor, MIN(remainder, MAXBSIZE));
         checkperror("rx: read failure\n");
         if (errno != 0 || readsize <= 0) {
           whisper(4, "rxw:%02i leg:%lx retired due to read len:%i errno:%i\n",
                   rxworker->id, pkt.leg_id, readsize, errno);
+          rxinfo(rxworker->rxconf_parent);
           restartme = 1;
           readsize = 0; // a -1 would really confuse the remainder algo
           if (errno == ECONNRESET || errno == EPIPE) { // 54 connection reset
@@ -120,11 +129,13 @@ void rxworker(struct rxworker_s *rxworker) {
             errno = 0;
           }
         }
+        rxworker->state='R';
         cursor += readsize;
         assert(cursor <= kfootsize);
         remainder -= readsize;
         assert(remainder >= 0);
         if (readsize == 0 && (!restartme)) {
+          rxinfo(rxworker->rxconf_parent);
           whisper(2, "rx: 0 byte read ;giving up. are we done?\n"); // XXX this
                                                                     // should
                                                                     // not be
@@ -148,6 +159,7 @@ void rxworker(struct rxworker_s *rxworker) {
             whisper(3, "prbs verification complete leg:%lx", pkt.leg_id);
           } else {
             whisper(1, "prbs verification failure leg:%lx", pkt.leg_id);
+            rxinfo(rxworker->rxconf_parent);
             exit(EDOOFUS);
           }
         }
@@ -186,13 +198,15 @@ void rxworker(struct rxworker_s *rxworker) {
       pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
       if (!restartme) {
 
-        whisper(5, "rxw:%02i sequenced leg:%lx[%lx]\n", rxworker->id,
+        whisper(6, "rxw:%02i sequenced leg:%lx[%lx]\n", rxworker->id,
                 pkt.leg_id, pkt.size);
 
         int writesize = 0;
         struct iovec iov;
         iov.iov_len = pkt.size;
         iov.iov_base = (void *)buffer;
+
+	rxworker->state='P';
         writesize = writev(rxworker->rxconf_parent->output_fd, &iov, 1);
         whisper(19, "rxw: writev fd:%i siz:%ld",
                 rxworker->rxconf_parent->output_fd, pkt.size);
@@ -227,6 +241,7 @@ void rxworker(struct rxworker_s *rxworker) {
         rxworker->rxconf_parent
             ->next_leg++; // do this last or race out the cksum code
         pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
+        rxworker->state='i';        
         // the sleepers must awaken
         pthread_cond_broadcast(&rxworker->rxconf_parent->seq_cv);
       } // if not restartme
@@ -235,6 +250,7 @@ void rxworker(struct rxworker_s *rxworker) {
   } // restartme
   free(buffer);
   whisper(4, "rxw:%02i done", rxworker->id);
+  rxinfo( rxworker->rxconf_parent);
 }
 
 void rxlaunchworkers(struct rxconf_s *rxconf) {
@@ -274,4 +290,19 @@ void rx(struct rxconf_s *rxconf) {
   pthread_mutex_init(&(rxconf->rxmutex), NULL);
   rxconf->done_mbox = 0;
   rxlaunchworkers(rxconf);
+}
+
+void rxinfo(struct rxconf_s *rxconf) {
+  char winflag='O';
+  whisper(1, "rxconf: workers %i, sequencerleg: %lx done: %i\n", rxconf->workercount, rxconf->next_leg, rxconf->done_mbox);
+   //for (int i=0; i < rxconf->workercount; i++){
+   for (int i=0; i < kthreadmax; i++){
+      if ( rxconf->workers[i].leg > 0 ) {
+        if ( rxconf->workers[i].leg == rxconf->next_leg)  winflag = '$'; else winflag='o';
+        whisper( 3,"{r:%02i:%c:%lx:%c}\t", i, rxconf->workers[i].state, rxconf->workers[i].leg,winflag);
+        if (gverbose > 10) tcp_dump_sockfdparams ( rxconf->workers[i].sockfd);
+        if ( i%8 == 7 ) whisper (1,"\n");
+      }
+   } 
+  whisper(3, "\n");
 }

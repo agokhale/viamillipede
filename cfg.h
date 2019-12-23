@@ -80,6 +80,9 @@ struct txconf_s {
 
 struct rxworker_s {
   int id;
+  char state;
+  u_long leg;
+  u_long legop;
   int sockfd;
   int socknum;
   struct rxconf_s *rxconf_parent;

@@ -5,7 +5,7 @@
 extern int gverbose;
 ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode);
 void stopwatch_start(struct timespec *t);
-u_long stopwatch_stop(struct timespec *t, int whisper_channel);
+u_long stopwatch_stop(struct timespec *t);
 #ifdef CHAOS
 int chaos_fail();
 #endif
@@ -17,7 +17,9 @@ unsigned long mix(unsigned int seed, void *data, unsigned long size);
   }
 #define checkperror(...)                                                       \
   do {                                                                         \
-    if (errno != 0)                                                            \
+    if (errno != 0) {                                                          \
       perror(__VA_ARGS__);                                                     \
+      whisper(1,"checperror %s:%i",__FUNCTION__,__LINE__);                           \
+    }                                                                          \
   } while (0);
 #endif

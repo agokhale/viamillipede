@@ -5,7 +5,6 @@ extern int gleg_limit;
 extern unsigned long gprbs_seed;
 extern char *gcheckphrase;
 extern u_long gdelay_us;
-void tx_rate_report();
 
 void txshutdown(struct txconf_s *txconf, int worker, u_long leg);
 char tx_state(struct txworker_s *txworker) {
@@ -138,35 +137,42 @@ int txpush(struct txworker_s *txworker) {
   int writelen = -1;
   int cursor = 0;
   tx_state_set(txworker, 'a'); // preAmble
+#define AIO
+#ifndef AIO
   int pktwrret =
       write(txworker->sockfd, &txworker->pkt, sizeof(struct millipacket_s));
   assert(pktwrret == sizeof(struct millipacket_s) &&
          "millipacket not written ");
+#else
+  struct iovec writevec[2];
+  writevec[0].iov_base=&(txworker->pkt);
+  writevec[0].iov_len=sizeof(struct millipacket_s);
+#endif
   txworker->writeremainder = txworker->pkt.size;
   assert(txworker->writeremainder <= kfootsize);
   if (gprbs_seed > 0) {
     prbs_gen((unsigned long *)txworker->buffer,
              gprbs_seed + txworker->pkt.leg_id, kfootsize);
   }
+#ifndef AIO
   while (txworker->writeremainder && retcode) {
     int minedsize = MIN(MAXBSIZE, txworker->writeremainder);
     tx_state_set(txworker, 'P'); // 'P'ush
-#ifdef CHAOS
-    if (chaos_fail()) {
-      close(txworker->sockfd); // things fail sometimes
-    }
-#endif
     if (errno != 0) {
       whisper(2, "nuisance errno %i before write to socket leg:%lx", errno,
               txworker->pkt.leg_id);
     }
-    if (gdelay_us)
+    if (gdelay_us) {
+      tx_state_set(txworker, 'W'); // 'W'wait
       usleep(gdelay_us);
+      tx_state_set(txworker, 'P'); // 'P'ush
+    }
     writelen =
         write(txworker->sockfd, ((txworker->buffer) + cursor), minedsize);
     if (errno != 0) {
       // indicate that this needs retried
       txstatus(txworker->txconf_parent, 7);
+      //XXXXX 
       whisper(2, " errno %i after write to socket leg:%lx", errno,
               txworker->pkt.leg_id);
       retcode = 0;
@@ -178,6 +184,23 @@ int txpush(struct txworker_s *txworker) {
     whisper(13, "txw:%02i psh leg:%lx.(+%x -%x)  ", txworker->id,
             txworker->pkt.leg_id, writelen, txworker->writeremainder);
   }
+#else
+  writevec[1].iov_base=txworker->buffer;
+  writevec[1].iov_len=txworker->pkt.size;
+  if (gdelay_us) {
+    tx_state_set(txworker, 'W'); // 'W'wait
+    usleep(gdelay_us);
+  }
+  tx_state_set(txworker, 'P'); // 'P'ush
+  int writeret=0;
+  writeret=writev(txworker->sockfd, &writevec[0], 2);
+  whisper(13, "txw:%02i psh leg:%lx.(+%x -%x)  ", txworker->id,
+          txworker->pkt.leg_id, writeret, txworker->writeremainder);
+  checkperror("aiowrite");
+  assert ( txworker->writeremainder + sizeof (struct millipacket_s ) == writeret);
+  txworker->writeremainder=0;
+#endif
+
   checkperror("writesocket");
   pthread_mutex_lock(&(txworker->txconf_parent->mutex));
   if (retcode == 1) {
@@ -189,7 +212,7 @@ int txpush(struct txworker_s *txworker) {
     DTRACE_PROBE(viamillipede, leg__drop);
     tx_state_set(txworker,
                  'x'); // dead  do not transmit more; save state and do it again
-    whisper(5, "rxw:%02i is dead\n", txworker->id);
+    whisper(4, "rxw:%02i is dead\n", txworker->id);
   }
   pthread_mutex_unlock(&(txworker->txconf_parent->mutex));
   return retcode;
@@ -325,6 +348,7 @@ void txworker_sm(struct txworker_s *txworker) {
     d: dispatched buffer is loaded; now send it
     Pp: pushing
     i: idle but connected
+    W: waiting(delay_us)
     x: disconnected, still bearing a buffer. attempt reconnection
     n: not yet connected,  new no buffer ??? connect => idle
 
@@ -335,14 +359,14 @@ void txworker_sm(struct txworker_s *txworker) {
     case 'd':
       DTRACE_PROBE(viamillipede, leg__tx)
       if (txpush(txworker) == 0) {
-        whisper(2, "txw:%02i push failed, marking for retry on leg:%lu\n",
+        whisper(2, "txw:%02i push failed, marking for retry on leg:%lx\n",
                 txworker->id, txworker->pkt.leg_id);
       }
       sleep_thief = 0;
       break;
     case 'x':
       // reinitialize socket and retry a dead worker
-      whisper(4, "txw:02%i starting recovery, preserved leg %lu \n",
+      whisper(4, "txw:02%i starting recovery, preserved leg %lx \n",
               txworker->id, txworker->pkt.leg_id);
       errno = 0;
       tx_start_net(txworker);
@@ -400,34 +424,30 @@ void txlaunchworkers(struct txconf_s *txconf) {
 }
 
 void txstatus(struct txconf_s *txconf, int log_level) {
-  whisper(log_level, "\nstate:leg-remainder(k)");
+  //whisper(log_level, "\nstate:leg-remainder(k)");
   for (int i = 0; i < txconf->worker_count; i++) {
-    if (i % 8 == 0) {
+    tcp_dump_sockfdparams( txconf->workers[i].sockfd );
+    whisper(log_level, "{t:%c:%lx}\t", tx_state(&txconf->workers[i]),
+            txconf->workers[i].pkt.leg_id
+    );
+    if (i % 8 == 7) {
       whisper(log_level, "\n");
     }
-    whisper(log_level, "%c:%lx(%x)\t", tx_state(&txconf->workers[i]),
-            txconf->workers[i].pkt.leg_id,
-            (txconf->workers[i].writeremainder) >> 10 // kbytes are sufficient
-    );
   }
   whisper(log_level, "\n");
 }
 int tx_poll(struct txconf_s *txconf) {
   // wait until all legs are pushed; called after ingest is complete
-  // if there are launche/dispatched /pushing workers; hang here
+  // if there are launched/dispatched/pushing workers; hang here
   int done = 0;
   int busy_cycles = 0;
   char instate = 'E'; // error uninitialized
   while (!done) {
     usleep(1000); // e^n backoff?
-    // if ((busy_cycles % 100) == 0)
-    //  txstatus(txconf, 4);
     busy_cycles++;
     int busy_workers = 0;
     for (int i = 0; i < txconf->worker_count; i++) {
-      // XXXXXpthread_mutex_lock (  &(txconf->workers[i].mutex) );
       instate = tx_state(&txconf->workers[i]);
-      // pthread_mutex_unlock (  &(txconf->workers[i].mutex) );
       if ((instate != 'i') && (instate != 'f')) {
         busy_workers++;
         break; // get out of here if there are busy workers
@@ -438,15 +458,14 @@ int tx_poll(struct txconf_s *txconf) {
   if (done && txconf->input_eof) {
     return 1;
   }
-
   return 0;
 }
 struct txconf_s *gtxconf;
 void tx_rate_report() {
   struct txconf_s *txconf = gtxconf;
-  u_long usecbusy = stopwatch_stop(&(txconf->ticker), 2);
-  whisper(1, "\n%lu(MiBytes) in %lu(us) %8.4f(MiBps) ",
-          txconf->stream_total_bytes >> 20, usecbusy,
+  u_long usecbusy = stopwatch_stop(&(txconf->ticker));
+  whisper(1, "\n%lu(MiBytes)/%lu(s)=%8.4f(MiBps)\n",
+          txconf->stream_total_bytes >> 20, usecbusy/1000000,
           (txconf->stream_total_bytes / (1.0 * usecbusy)));
   txstatus(txconf, 1);
 }
@@ -476,10 +495,6 @@ void tx(struct txconf_s *txconf) {
   checkperror(" nuisance  starting tx");
   // start control channel
   stopwatch_start(&(txconf->ticker));
-  signal(SIGINFO, &tx_rate_report);
-  signal(SIGPIPE, &tx_rate_report);
-  signal(SIGINT, &partingshot);
-  signal(SIGHUP, &partingshot);
   checkperror("nuisance setting signal");
   pthread_mutex_init(&(txconf->mutex), NULL);
   pthread_mutex_lock(&(txconf->mutex));

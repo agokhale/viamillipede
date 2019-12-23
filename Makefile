@@ -10,3 +10,4 @@ CFLAGS+= -g
 # This LDADD knob can't possibly be intended to use this way
 LDADD= -lpthread
 .include <bsd.prog.mk>
+.include <bsd.clang-analyze.mk>

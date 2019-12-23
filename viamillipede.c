@@ -17,6 +17,10 @@ void usage() {
 #endif
 }
 
+#define MODE_TX 2
+#define MODE_RX 4
+#define MODE_PRBS 8
+int mode = 0;
 int gverbose = 0;
 #ifdef CHAOS
 unsigned long gchaos = 0;
@@ -33,6 +37,11 @@ struct txconf_s txconf;
 struct rxconf_s rxconf;
 struct ioconf_s ioconf;
 
+void siginfohandle() {
+  printf("mode %x\b",mode); 
+  if (mode & MODE_TX) tx_rate_report();
+  if (mode & MODE_RX) rxinfo(&rxconf );
+}
 int initiate_relay() {
   // thunk in globals, called from rx's relay  startup packet
   if (ginitiator_oneshot > 0)
@@ -52,11 +61,10 @@ int initiate_relay() {
 int main(int argc, char **argv) {
 
   int arg_cursor = 0;
-#define MODE_TX 2
-#define MODE_RX 4
-#define MODE_PRBS 8
-  int mode = 0;
   int users_input_port;
+  signal(SIGUSR1, &verbose_plus);
+  signal(SIGUSR2, &verbose_minus);
+  signal(SIGINFO, &siginfohandle);
   gcheckphrase = "yoes";
   (argc > 1) ?: usage();
   txconf.worker_count = 16;
@@ -65,14 +73,15 @@ int main(int argc, char **argv) {
   ioconf.terminate_port = 0;
   ioconf.initiate_port = 0;
   errno = 0; // why, really why?!!!
-  checkperror(" main nuiscance -0 ");
+  checkperror(" main nuiscance: no possible reason, bad zoot! ");
   while (arg_cursor < argc) {
     whisper(19, "  arg: %d, %s\n", arg_cursor, argv[arg_cursor]);
     checkperror("main arg proc");
     assert(errno == 0);
     if (strcmp(argv[arg_cursor], "rx") == 0) {
       /* rx <portnumber> */
-      assert(++arg_cursor < argc &&
+      ++arg_cursor;
+      assert(arg_cursor < argc &&
              " rx requires a  <portnumber> from 0-SHRT_MAX");
       users_input_port = atoi(argv[arg_cursor]);
       assert(0 < users_input_port && users_input_port < USHRT_MAX &&
@@ -80,15 +89,16 @@ int main(int argc, char **argv) {
       rxconf.port = (short)users_input_port;
       whisper(3, " being a server at port %i \n\n ", rxconf.port);
       mode |= MODE_RX;
-      checkperror(" main nuiscance -1 ");
+      checkperror(" main nuiscance: rx init error ");
     }
     if (strcmp(argv[arg_cursor], "tx") == 0) {
-      //
+      /* tx may be defined multiple times to achieve a balance across multiple L3 routes
+       ei:  tx localhost 12323 tx tardis.co.ac.uk 12323 tx otherhost 123232
+       but they all must the same machine behind the ip addres set */
       assert(++arg_cursor < argc && "tx needs <host> and <port> arguments");
       assert(strlen(argv[arg_cursor]) > 0 && "hostname seems fishy");
-      checkperror(" main nuiscance  port err0 ");
+      checkperror(" main nuiscance : hostname err");
       txconf.target_ports[txconf.target_port_count].name = argv[arg_cursor];
-      checkperror(" main nuiscance  port err1 ");
       arg_cursor++;
       assert(arg_cursor < argc &&
              " tx  requires a  <portnumber> from 0-SHRT_MAX");
@@ -97,24 +107,24 @@ int main(int argc, char **argv) {
              "port number should be 0-USHRT_MAX");
       txconf.target_ports[txconf.target_port_count].port =
           (short)users_input_port;
-      checkperror(" main nuiscance  port err2 ");
+      checkperror(" main nuiscance:  port err2 ");
       whisper(2, "tx host: %s port:%i \n",
               txconf.target_ports[txconf.target_port_count].name,
               txconf.target_ports[txconf.target_port_count].port);
       txconf.target_port_count++;
-      checkperror(" main nuiscance  port err ");
       mode |= MODE_TX;
     }
     if (strcmp(argv[arg_cursor], "threads") == 0) {
-      assert(++arg_cursor < argc && "threads needs <numeber> arguments");
+      ++arg_cursor;
+      assert(arg_cursor < argc && "threads needs <numeber> arguments");
       txconf.worker_count = atoi(argv[arg_cursor]);
-      checkperror(" main nuiscance -3 ");
+      checkperror(" main nuiscance: thread count parse ");
       assert(txconf.worker_count <= 16 &&
              "it's unlikely that a large threadcount is beneficial");
     }
     if (strcmp(argv[arg_cursor], "verbose") == 0) {
-      /// XXXX NDEBUG will break
-      assert(++arg_cursor < argc &&
+      ++arg_cursor;
+      assert(arg_cursor < argc &&
              "verbose  needs <level ( 0 - 19) > argument");
       gverbose = atoi(argv[arg_cursor]);
       whisper(11, "verbose set to %i\n", gverbose);
@@ -181,7 +191,7 @@ int main(int argc, char **argv) {
     }
     arg_cursor++;
   }
-  checkperror("main nuiscance");
+  checkperror("main nuiscance: unspecified");
   assert(!(ioconf.terminate_port > 0 && ioconf.initiate_port > 0) &&
          "can't initiate and termimate in parallel");
   DTRACE_PROBE(viamillipede, init);
@@ -214,8 +224,6 @@ int main(int argc, char **argv) {
       rxpoll_done = 1;
     usleep(333);
   }
-  signal(SIGUSR1, &verbose_plus);
-  signal(SIGUSR2, &verbose_minus);
   whisper(15, "finished normally");
   exit(0);
 }

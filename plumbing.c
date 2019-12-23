@@ -1,6 +1,10 @@
 #include "util.h"
 #include "worker.h"
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 
 #ifdef CHAOS
 extern unsigned long gchaos;
@@ -71,7 +75,7 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
 void stopwatch_start(struct timespec *t) {
   assert(clock_gettime(CLOCK_UPTIME, t) == 0);
 }
-u_long stopwatch_stop(struct timespec *t, int whisper_channel) {
+u_long stopwatch_stop(struct timespec *t) {
   //  stop the timer started at t
   // returns usec resolution diff of time
   int retc = 1;
@@ -101,6 +105,45 @@ u_long stopwatch_stop(struct timespec *t, int whisper_channel) {
   u_long ret = (secondsdiff * 1000000) + (nanoes / 1000); // in usec
   return ret;
 }
+int tcp_geterr( int sfd) {
+    int sockerr;
+    u_int sockerrsize = sizeof(sockerr); // uhg
+    getsockopt(sfd, SOL_SOCKET, SO_ERROR, &sockerr, &sockerrsize);
+    checkperror("__FUNCTION__");
+    return sockerr;
+}
+int tcp_nowait( int si) {
+	int val=1;
+	socklen_t outsiz=sizeof(val);
+	setsockopt( si,IPPROTO_TCP, TCP_NODELAY, &val, outsiz);
+	checkperror(__FUNCTION__);
+	return val;
+}
+int tcp_setbufsize( int si) {
+#define MEGA_BYTES (1024*1024)
+	int val= 1 * MEGA_BYTES;
+	socklen_t vsiz=sizeof(val);
+	setsockopt( si,SOL_SOCKET, SO_RCVBUF, &val, vsiz); //nice to have
+	setsockopt( si,SOL_SOCKET, SO_SNDBUF, &val, vsiz);  // absloutlely necessary or single host lo0 use will lock up viamillipede
+	checkperror("nowait");
+	
+	tcp_geterr(si);
+	return val;
+}
+int tcp_getsockinfo1( int si,int whatsel ) {
+	int outval=0;
+	socklen_t outsiz=sizeof(outval);
+	getsockopt( si,SOL_SOCKET, whatsel, &outval ,&outsiz);
+	return outval;
+}
+void tcp_dump_sockfdparams ( int sfd) {
+   whisper( 8, "%s:%x ","RCVBUF", tcp_getsockinfo1( sfd,SO_RCVBUF));
+   whisper( 8, "%s:%x ","SO_SNDBUF", tcp_getsockinfo1( sfd,SO_SNDBUF));
+   whisper( 8, "%s:%x ","SO_SNDLOWAT", tcp_getsockinfo1( sfd,SO_SNDLOWAT));
+   whisper( 8, "%s:%x ","SO_RCVLOWAT", tcp_getsockinfo1( sfd,SO_RCVLOWAT));
+   whisper( 6, "\nsocketfd:%i\n ",sfd);
+}
+
 // return a connected socket fd
 int tcp_connect(char *host, int port) {
   int ret_sockfd = -1;
@@ -125,14 +168,13 @@ int tcp_connect(char *host, int port) {
     whisper(1, "tx: connect failed to %s:%d fd: %i \n", host, port, ret_sockfd);
     // our only output is the socketfd, so trash it
     ret_sockfd = -1;
-    whisper(19, "trashing fd to fail  %s:%d fd: %i \n", host, port, ret_sockfd);
   } else {
-    int sockerr;
-    u_int sockerrsize = sizeof(sockerr); // uhg
-    getsockopt(ret_sockfd, SOL_SOCKET, SO_ERROR, &sockerr, &sockerrsize);
-    checkperror("connect");
-    assert(sockerr == 0);
+    assert ( 0 == tcp_geterr(ret_sockfd));
     whisper(8, "        connected to %s:%i\n", host, port);
+    tcp_nowait( ret_sockfd); 
+    tcp_setbufsize( ret_sockfd); 
+    tcp_dump_sockfdparams(ret_sockfd);
+    checkperror("sopt");
   }
   return (ret_sockfd);
 }
@@ -169,6 +211,7 @@ int tcp_accept(struct sockaddr_in *sa, int socknum) {
   whisper(13, "   socket %i accepted to fd:%i \n", socknum, out_sockfd);
   DTRACE_PROBE1(viamillipede, worker__connected, out_sockfd);
   checkperror("acceptor");
+  tcp_dump_sockfdparams(out_sockfd);
   return (out_sockfd);
 }
 
