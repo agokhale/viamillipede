@@ -1,0 +1,11 @@
+Mon Dec 23 09:11:56 EST 2019
+Bugs:
+	Fix deadlock!: Increase buffersize socket options; small buffers on single machines might deadlock due to one binary exhausting all TCP buffers. 
+Performance:
+	Use writev for tx sock operations
+Observatiblity:
+	Add SIGINFO reports for RX, compact and sanitize the status reports
+	Add delayus operator for slowing connection.
+	SIGUSR1 and SIGUSER2 now increment and decrement verbose levels.
+Smoke tests rewritten (to pass)
+	- use openssl for repeatable pseudorandom, unsalted, extra chunky data. 
