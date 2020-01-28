@@ -177,7 +177,7 @@ test_fin
 t_checksums() {
 test_setup checksums 2000
 dd if=/dev/zero bs=1m count=2000 | \
-	$dutbin tx 192.168.1.200 12323 threads ${threadcount} verbose  ${verboarg}  rx 12323  \
+	$dutbin tx localhost 12323 threads ${threadcount} verbose  ${verboarg}  rx 12323  \
 	checksums \
 	2>&1  >  /dev/null
 test_fin
