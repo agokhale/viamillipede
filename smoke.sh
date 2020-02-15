@@ -86,7 +86,7 @@ test_fin
 #____________________________________________________________________________
 
 t_est_loopback_trivial() {
-test_setup loopback 0.001
+test_setup loopback 0.00001
 output=`echo asdf | $dutbin rx 4545 tx localhost 4545  threads  ${threadcount}`
 case $output in
  "asdf") break ;;

@@ -1,9 +1,5 @@
 #include "worker.h"
 
-#define ktimeout_sec (35)
-#define ktimeout_granularity_usec (550256)
-#define ktimeout_stall_tolerance                                               \
-  ((ktimeout_sec * 1000000) / ktimeout_granularity_usec)
 // use condvars
 #define kv 1
 
@@ -22,9 +18,6 @@ void rxworker(struct rxworker_s *rxworker) {
   rxworker->state='i';
 #ifdef kv
   assert(pthread_cond_init(&rxworker->rxconf_parent->seq_cv, NULL) == 0);
-  struct timespec stall_timespec;
-  stall_timespec.tv_sec = 0;
-  stall_timespec.tv_nsec = 1000 * (ktimeout_granularity_usec);
 #endif
   setproctitle("rx %d", rxworker->id);
 
@@ -180,7 +173,6 @@ void rxworker(struct rxworker_s *rxworker) {
       If the sequencer blocks for an extended time; it's unlikely to ever get
       better so declare an error and exit
       */
-      long sequencer_stalls = 0;
 
       pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
       while (pkt.leg_id != rxworker->rxconf_parent->next_leg && (!restartme)) {
@@ -227,8 +219,8 @@ void rxworker(struct rxworker_s *rxworker) {
             if (rx_checksum != pkt.checksum) {
               whisper(2, "rx checksum mismatch %lu != %lu", rx_checksum,
                       pkt.checksum);
-              whisper(2, "rxw:%02i offending leg:%lu.%lu after %ld stalls\n",
-                      rxworker->id, pkt.leg_id, pkt.size, sequencer_stalls);
+              whisper(2, "rxw:%02i offending leg:%lu.%lu \n",
+                      rxworker->id, pkt.leg_id, pkt.size);
             }
             assert(rx_checksum == pkt.checksum);
             grx_saved_checksum = rx_checksum;
