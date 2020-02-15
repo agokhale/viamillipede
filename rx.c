@@ -108,7 +108,7 @@ void rxworker(struct rxworker_s *rxworker) {
       assert(pkt.size <= kfootsize);
       rxworker->leg=pkt.leg_id; 
       rxworker->legop=pkt.opcode; 
-      whisper(9, "rxw:%02i leg:%lx siz:%lu op:%x caught new leg\n",
+      whisper(9, "rxw:%02i leg:%lx siz:%lu op:%lx caught new leg\n",
               rxworker->id, pkt.leg_id, pkt.size, pkt.opcode);
       int remainder = pkt.size;
       int remainder_counter = 0;
@@ -214,7 +214,7 @@ void rxworker(struct rxworker_s *rxworker) {
         assert(writesize == pkt.size);
         DTRACE_PROBE(viamillipede, leg__rx);
         if (pkt.opcode == end_of_millipede) {
-          whisper(5, "rxw:%02i caught 0x%x done with last frame\n",
+          whisper(5, "rxw:%02i op:%lx done with last packet\n",
                   rxworker->id, pkt.opcode);
           pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
           rxworker->rxconf_parent->done_mbox = 1;
@@ -234,7 +234,7 @@ void rxworker(struct rxworker_s *rxworker) {
             grx_saved_checksum = rx_checksum;
           };
         } else {
-          whisper(1, "bogus opcode %x", pkt.opcode);
+          whisper(1, "bogus opcode %lx", pkt.opcode);
           exit(EBADRPC);
         }
         pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);

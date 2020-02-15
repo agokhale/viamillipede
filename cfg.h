@@ -35,16 +35,16 @@ struct ioconf_s; // forward decl to permit inception
 #define end_of_millipede 0xdead
 // the bearer channel header
 struct millipacket_s {
-  unsigned long preamble; // == preamble_cannon_ul constant,  mostly
+  u_long preamble; // == preamble_cannon_ul constant,  mostly
                           // superstition against getting alien transmissions
-  unsigned long leg_id;   // leg_id= ( streampos  % leg_size ) is the main
+  u_long leg_id;   // leg_id= ( streampos  % leg_size ) is the main
                           // sequencer for the whole session
   // this may result in max transmission size of klegsize * ( unsigned int max )
   // XXX debug  sequencer rollover condition if this is a problem
-  unsigned long size; // <= kfootsize;  how much user payload is in this packet
-  unsigned long
+  u_long size; // <= kfootsize;  how much user payload is in this packet
+  u_long
       checksum; //  checksum = mix ( leg_id, opcode, sample ( payload) );
-  int opcode;
+  u_long  opcode;
 };
 struct txworker_s {
   int id;
