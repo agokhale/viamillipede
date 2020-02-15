@@ -53,49 +53,13 @@ void rxworker(struct rxworker_s *rxworker) {
     // /usr/src/contrib/netcat has a nice pipe input routine XXX perhaps lift it
     while (!rxworker->rxconf_parent->done_mbox && (!restartme)) {
       struct millipacket_s pkt;
-      int cursor = 0;
-      int preamble_cursor = 0;
-      int preamble_fuse = 0;
       unsigned long rx_checksum = 0;
-      while (preamble_cursor < sizeof(struct millipacket_s) && (!restartme)) {
-        // fill the preamble + millipacket structure whole
-        checkperror("nuicsance before preamble read");
-        whisper(((errno == 0) ? 19 : 3),
-                "rxw:%02i prepreamble and millipacket: errno:%i cursor:%i\n",
-                rxworker->id, errno, preamble_cursor);
-        struct iovec rxiov;
-        rxiov.iov_len = (sizeof(struct millipacket_s) - preamble_cursor);
-        rxiov.iov_base = ((u_char *)&pkt) + preamble_cursor;
-        rxworker->state='a';
-        readlen = readv(rxworker->sockfd, &rxiov, 1);
-        checkperror("preamble read");
-        whisper(
-            ((errno == 0) ? 19 : 3),
-            "rxw:%02i preamble and millipacket: len %i errno:%i cursor:%i\n",
-            rxworker->id, readlen, errno, preamble_cursor);
-        assert((readlen >= 0) && " bad packet header read");
-        if (readlen == 0) {
-          whisper(6, "rxw:%02i exits after empty preamble\n", rxworker->id);
-          pthread_exit(rxworker); // no really we are done, and who wants our
-                                  // exit status?
-          continue;
-        };
-        if (readlen < (sizeof(struct millipacket_s) - preamble_cursor)) {
-          whisper(7,
-                  "rx: short header %i(read)< %lu (headersize), preamble "
-                  "cursor: %i \n",
-                  readlen, sizeof(struct millipacket_s), preamble_cursor);
-          checkperror("short read");
-        }
-        preamble_cursor += readlen;
-        assert(preamble_cursor <= sizeof(struct millipacket_s));
-        preamble_fuse++;
-        if (preamble_fuse > 100000) {
-          whisper(1, "fuse popped waiting for a preamble, check network");
-          exit(ETIMEDOUT);
-        }
-      }
-      assert(preamble_cursor == sizeof(struct millipacket_s));
+      int cursor = 0;
+      struct iovec rxiov;
+      rxiov.iov_len = sizeof(struct millipacket_s);
+      rxiov.iov_base = ((u_char *)&pkt); //  really?
+      rxworker->state='a';
+      readlen = readv(rxworker->sockfd, &rxiov, 1);
       assert(pkt.preamble == preamble_cannon_ul && "preamble check");
       assert(pkt.size >= 0);
       assert(pkt.size <= kfootsize);
@@ -163,15 +127,10 @@ void rxworker(struct rxworker_s *rxworker) {
         initiate_relay(); // initiate the tcp connection if we are an initiator
       }
       /*block until the sequencer is ready to push this
-       XXXX  suboptimal  sequencer ?? prove it!
-       perhaps a minheap??
 
       Heisenberg compensator theory of operation:
       next_leg will monotonically increment asserting that the output stream is
       ordered by tracking it's assingment from the ingest code.
-
-      If the sequencer blocks for an extended time; it's unlikely to ever get
-      better so declare an error and exit
       */
 
       pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
