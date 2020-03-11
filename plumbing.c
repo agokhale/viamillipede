@@ -73,7 +73,7 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
   return (accumulator);
 }
 void stopwatch_start(struct timespec *t) {
-  assert(clock_gettime(CLOCK_UPTIME, t) == 0);
+  assert(clock_gettime(CLOCK_REALTIME, t) == 0);
 }
 u_long stopwatch_stop(struct timespec *t) {
   //  stop the timer started at t
@@ -81,7 +81,7 @@ u_long stopwatch_stop(struct timespec *t) {
   int retc = 1;
   struct timespec stoptime;
   while (retc != 0) {
-    retc = clock_gettime(CLOCK_UPTIME, &stoptime);
+    retc = clock_gettime(CLOCK_REALTIME, &stoptime);
     // this can fail errno 4 EINTR
   }
   if (errno == EINTR) {

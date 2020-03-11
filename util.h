@@ -1,6 +1,13 @@
 #ifndef utilh
 #define utilh
-#include <sys/sdt.h>
+#ifdef _dtrace
+	#include <sys/sdt.h>
+#else
+	#define DTRACE_PROBE(...)  
+	#define DTRACE_PROBE1(...)  
+	#define MAXBSIZE 4096
+	//hereticalXXXX
+#endif
 #include <sys/types.h>
 extern int gverbose;
 ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode);

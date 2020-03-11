@@ -19,7 +19,7 @@ void rxworker(struct rxworker_s *rxworker) {
 #ifdef kv
   assert(pthread_cond_init(&rxworker->rxconf_parent->seq_cv, NULL) == 0);
 #endif
-  setproctitle("rx %d", rxworker->id);
+  //setproctitle("rx %d", rxworker->id);
 
   while (!rxworker->rxconf_parent->done_mbox) {
     restartme = 0;
@@ -117,7 +117,7 @@ void rxworker(struct rxworker_s *rxworker) {
           } else {
             whisper(1, "prbs verification failure leg:%lx", pkt.leg_id);
             rxinfo(rxworker->rxconf_parent);
-            exit(EDOOFUS);
+            exit(ENETDOWN);
           }
         }
       }
@@ -163,7 +163,7 @@ void rxworker(struct rxworker_s *rxworker) {
                 rxworker->rxconf_parent->output_fd, pkt.size);
         checkperror("rxw:write buffer");
         assert(writesize == pkt.size);
-        DTRACE_PROBE(viamillipede, leg__rx);
+        //XXXDTRACE_PROBE(viamillipede, leg__rx);
         if (pkt.opcode == end_of_millipede) {
           whisper(5, "rxw:%02i op:%lx done with last packet\n",
                   rxworker->id, pkt.opcode);
@@ -186,7 +186,7 @@ void rxworker(struct rxworker_s *rxworker) {
           };
         } else {
           whisper(1, "bogus opcode %lx", pkt.opcode);
-          exit(EBADRPC);
+          exit(ENETDOWN);
         }
         pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
         rxworker->rxconf_parent

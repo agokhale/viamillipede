@@ -230,9 +230,9 @@ int tx_tcp_connect_next(struct txconf_s *txconf) {
   whisper(5, "tx: chosen target %s %d\n",
           txconf->target_ports[txconf->target_port_cursor].name,
           txconf->target_ports[txconf->target_port_cursor].port);
-  DTRACE_PROBE2(viamillipede, worker__connect,
-                txconf->target_ports[txconf->target_port_cursor].name,
-                txconf->target_ports[txconf->target_port_cursor].port);
+  //XXXDTRACE_PROBE2(viamillipede, worker__connect,
+                //txconf->target_ports[txconf->target_port_cursor].name,
+                //txconf->target_ports[txconf->target_port_cursor].port);
   return (tcp_connect(txconf->target_ports[chosen_target].name,
                       txconf->target_ports[chosen_target].port));
 }
@@ -374,7 +374,7 @@ void txworker_sm(struct txworker_s *txworker) {
       break;
     default:
       whisper(1, "bad zoot");
-      exit(EDOOFUS);
+      exit(ENETDOWN);
     }
     sleep_thief++; // this Looks crazy ; but it's good for 30%
     // XXX back off tuning tbd
