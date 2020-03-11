@@ -64,7 +64,7 @@ int main(int argc, char **argv) {
   int users_input_port;
   signal(SIGUSR1, &verbose_plus);
   signal(SIGUSR2, &verbose_minus);
-  signal(SIGINFO, &siginfohandle);
+  //signal(SIGINFO, &siginfohandle);
   gcheckphrase = "yoes";
   (argc > 1) ?: usage();
   txconf.worker_count = 16;
@@ -194,7 +194,7 @@ int main(int argc, char **argv) {
   checkperror("main nuiscance: unspecified");
   assert(!(ioconf.terminate_port > 0 && ioconf.initiate_port > 0) &&
          "can't initiate and termimate in parallel");
-  DTRACE_PROBE(viamillipede, init);
+  //XXXDTRACE_PROBE(viamillipede, init);
   if (mode & MODE_RX)
     rx(&rxconf); // rx must preceed
   if (mode & MODE_TX)
