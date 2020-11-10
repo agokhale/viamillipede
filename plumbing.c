@@ -137,11 +137,13 @@ int tcp_getsockinfo1( int si,int whatsel ) {
 	return outval;
 }
 void tcp_dump_sockfdparams ( int sfd) {
-   whisper( 8, "%s:%x ","RCVBUF", tcp_getsockinfo1( sfd,SO_RCVBUF));
-   whisper( 8, "%s:%x ","SO_SNDBUF", tcp_getsockinfo1( sfd,SO_SNDBUF));
-   whisper( 8, "%s:%x ","SO_SNDLOWAT", tcp_getsockinfo1( sfd,SO_SNDLOWAT));
-   whisper( 8, "%s:%x ","SO_RCVLOWAT", tcp_getsockinfo1( sfd,SO_RCVLOWAT));
-   whisper( 6, "\nsocketfd:%i\n ",sfd);
+  if ( sfd > 0 ){ 
+    whisper( 18, "%s:%x ","RCVBUF", tcp_getsockinfo1( sfd,SO_RCVBUF));
+    whisper( 18, "%s:%x ","SO_SNDBUF", tcp_getsockinfo1( sfd,SO_SNDBUF));
+    whisper( 18, "%s:%x ","SO_SNDLOWAT", tcp_getsockinfo1( sfd,SO_SNDLOWAT));
+    whisper( 18, "%s:%x ","SO_RCVLOWAT", tcp_getsockinfo1( sfd,SO_RCVLOWAT));
+    whisper( 16, "\nsocketfd:%i\n ",sfd);
+  }
 }
 
 // return a connected socket fd
@@ -153,29 +155,37 @@ int tcp_connect(char *host, int port) {
   struct sockaddr_in lsockaddr;
   // struct sockaddr lsockaddr;
   lhostent = gethostbyname(host);
-  if (h_errno != 0)
+  if (h_errno != 0) {
     herror("gethostenterror");
+    whisper (1,"hostent error for host:%s", host );
+  }
   assert(h_errno == 0 && "hostname fishy");
   lsockaddr.sin_family = AF_INET;
   lsockaddr.sin_port = htons(port);
   memcpy(&(lsockaddr.sin_addr), lhostent->h_addr_list[0],
          sizeof(struct in_addr)); // y u hate c?
   ret_sockfd = socket(AF_INET, SOCK_STREAM, 0);
+  checkperror ( "socket()");
   assert(ret_sockfd > 0 && "socket fishy");
   retcode = connect(ret_sockfd, (struct sockaddr *)&(lsockaddr),
                     sizeof(struct sockaddr));
+  checkperror ( "connect()");
   if (retcode != 0) {
     whisper(1, "tx: connect failed to %s:%d fd: %i \n", host, port, ret_sockfd);
     // our only output is the socketfd, so trash it
     ret_sockfd = -1;
   } else {
     assert ( 0 == tcp_geterr(ret_sockfd));
+    checkperror ( "geterr");
+  }
+  if (retcode != 0) {
     whisper(8, "        connected to %s:%i\n", host, port);
     tcp_nowait( ret_sockfd); 
     tcp_setbufsize( ret_sockfd); 
     tcp_dump_sockfdparams(ret_sockfd);
     checkperror("sopt");
   }
+  checkperror ( "tcp_connection ?? ");
   return (ret_sockfd);
 }
 int tcp_recieve_prep(struct sockaddr_in *sa, int *socknum, int inport) {
