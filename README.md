@@ -148,9 +148,17 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+  ``` viamillipede prbs 0xd00f tx localhost 3434 rx 3434 ```
 	+ Will not terminate.
 	+ bitstream is only random enough for me and will not survive cryptanalysis
+	+ can be used to confuse dedup or compression
+	+ will always generate the same data given the seed
+	+ verification step can be run separately from generation
+	+ tx will generate the bitstream
+	+ rx will verify the bitstream and leave it on stdout
 + leglimit <long> stop after a number of legs
 	+ use to provide a bounded tranmission length
 	+ measureed in 2MiB chunks
++ delayus <long> delay N  microseconds
+	+ cap throughput crudely
+	+ delay applied to every 2MiB   boundary
 
 
 
@@ -171,6 +179,8 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ choose a cipher that's binary transparent  
 	+ appropriate  paranoia vs. performance up to you
 	+ enigma, rot39, morse?
+
+### Check the smoke.sh testscrip  for detailed examples of possible uses. 
 
 ### Theory of operation
 ![alt text](theory_operation_viamillipede.svg "theory of operation")

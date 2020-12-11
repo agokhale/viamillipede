@@ -162,10 +162,9 @@ setup_default() {
 	setup_checkphrase
 	tiny
 	ncref
-	deaddetect
-	clean_running_vimillipede
-	deaddetect_extended
-	#setup_grand
+	#deaddetect
+	clean_running_viamillipede
+	#deaddetect_extended
 	#setup_hotpath
 }
 setup_common

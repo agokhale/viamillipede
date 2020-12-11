@@ -12,7 +12,7 @@ morinfo() {
 trap morinfo  INFO
 
 start_epochtime=`date +"%s"`
-gpayloadgen="dd if=/dev/zero bs=1m count=1000 | openssl enc -aes-128-cbc -nosalt -k swordfiiish"
+gpayloadgen="dd if=/dev/zero bs=1m count=1000 | openssl enc -aes-128-cbc -nosalt -k swordfiiish -iter 1"
 gpayloadmd5=` eval $gpayloadgen | md5 -q `
 
 odir=`mktemp  -d  /tmp/viamillipede-smoke-${start_epochtime}.XXX`
@@ -110,7 +110,7 @@ test_fin
 t_est_delay() {
 test_setup delay 8
 $dutbin charmode prbs 0xd00f tx localhost 3434 verbose $verboarg threads ${threadcount} \
-	rx 3434  leglimit 4 delayus 500000  \
+	rx 3434  leglimit 4 delayus 5000000  \
 	 > /dev/null &
 prbpid=$!
 prisoners="$prisoners $prbpid"
@@ -137,7 +137,7 @@ t_bearer_for_ssh() {
 $dutbin charmode threads ${threadcount} terminate 16622  tx localhost 4545 rx 4546  verbose $verboarg &
 termpid=$!
 
-$dutbin charmode threads ${threadcount} initiate localhost 22  tx localhost 4546 rx 4545  verbose $verboarg &
+$dutbin charmode threads ${threadcount} initiate localhost 6622  tx localhost 4546 rx 4545  verbose $verboarg &
 nitpid=$!
 prisoners="$prisoners $nitpid $termpid"
 sleep 3
@@ -182,11 +182,19 @@ dd if=/dev/zero bs=1m count=2000 | \
 	2>&1  >  /dev/null
 test_fin
 }
+t_hotpath() {
+test_setup hotpath 10000
+dd if=/dev/zero bs=1m count=10000 | \
+	$dutbin tx localhost 12323 threads ${threadcount} verbose  ${verboarg}  rx 12323  \
+	2>&1  >  /dev/null
+test_fin
+}
 #________________________________________________________________________
 t_est_dummy
 t_est_zeros_reference
 t_est_loopback_trivial
 t_checksums
+t_hotpath
 t_est_delay
 t_est_prbs
 t_bearer_for_ssh
