@@ -112,4 +112,5 @@ struct ioconf_s {
   unsigned short initiate_port;
   int initiate_socket;
 };
+#include "VMPDTRACEpolyfill.h"
 #endif
