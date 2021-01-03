@@ -1,6 +1,26 @@
 #ifndef utilh
 #define utilh
-#include <sys/sdt.h>
+#ifdef VMPDTRACE
+  #include <sys/sdt.h>
+#endif
+#ifndef MAXBSIZE
+  //Freebsd defines a civilized largest single transaction; 
+  //do something elsewhere
+  #define MAXBSIZE 16384
+  //#warning "MAXBSIZE unsupported, using 16k"
+#endif
+#ifndef CLOCK_UPTIME
+  //Polyfill clock
+  #define CLOCK_UPTIME CLOCK_REALTIME
+  //#notify "CLOCK_UPTIME unsupported"
+#endif
+#ifndef EDOOFUS
+  #define EDOOFUS ENETDOWN
+#endif
+#ifndef EBADRPC
+  #define EBADRPC EKEYEXPIRED
+#endif
+
 #include <sys/types.h>
 extern int gverbose;
 ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode);

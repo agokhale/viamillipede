@@ -64,7 +64,10 @@ int main(int argc, char **argv) {
   int users_input_port;
   signal(SIGUSR1, &verbose_plus);
   signal(SIGUSR2, &verbose_minus);
+#ifdef SIGINFO
   signal(SIGINFO, &siginfohandle);
+#endif
+
   gcheckphrase = "yoes";
   (argc > 1) ?: usage();
   txconf.worker_count = 16;

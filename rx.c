@@ -19,7 +19,9 @@ void rxworker(struct rxworker_s *rxworker) {
 #ifdef kv
   assert(pthread_cond_init(&rxworker->rxconf_parent->seq_cv, NULL) == 0);
 #endif
+#ifdef FREEBSD
   setproctitle("rx %d", rxworker->id);
+#endif 
 
   while (!rxworker->rxconf_parent->done_mbox) {
     restartme = 0;
@@ -35,8 +37,10 @@ void rxworker(struct rxworker_s *rxworker) {
     pthread_mutex_unlock(&rxworker->rxconf_parent->sa_mutex);
     whisper(16, "rxw:%02i fd:%i expect %s\n", rxworker->id, rxworker->sockfd,
             gcheckphrase);
-    read(rxworker->sockfd, buffer,
+    int readres =-1; 
+    readres = read(rxworker->sockfd, buffer,
          (size_t)4); // XXX this is vulnerable to slow starts
+    assert(readres == 4 && "check phrase read err");
     if (bcmp(buffer, gcheckphrase, 4) != 0) {
       whisper(1,
               "rxw:%02d checkphrase failure. This connection is not for me. "
