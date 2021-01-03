@@ -1,9 +1,24 @@
 #include "worker.h"
+/* terminate and intiate allow viamillipede to talk to other sockets,
+   rather than the default stdin/stdout connection
+  TOP: Do nexcessary tcp plumbing, then overwrite the io fd's
+
+                       /------\
+tcp >----> viamillipede--------viamillipede >---> tcp
+(client)   (terminate) \------/ (initaite)       (server)
+                        (parallel
+			  tcp
+			sessions)
+
+*/
 
 int terminate(struct txconf_s *txconf, struct rxconf_s *rxconf,
               struct ioconf_s *ioconf) {
-  /** terminate accepts a tcp connection and fixes up the ioconf structure  for
+  /** terminate accepts a tcp connection and conects viamillipede 
+    as a full duplex tcp to tcp multiplexor:
+    nd fixes up the ioconf structure  for
    ingest the tcp socket returns the file descripter chosen
+  returns: -6( incomplete) , 1(stdiout), 0(stdin==STDIN_FILENO)
   */
   int retc = -6;
   if (ioconf->terminate_port > 0) {
@@ -27,6 +42,9 @@ int terminate(struct txconf_s *txconf, struct rxconf_s *rxconf,
   }
   return retc;
 }
+/** initiate makes an onward  full duplex tcp connection when  
+  it's connected to with viamillipede peer
+*/
 int initiate(struct txconf_s *txconf, struct rxconf_s *rxconf,
              struct ioconf_s *ioconf) {
   int retc = -6;
