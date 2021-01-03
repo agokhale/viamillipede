@@ -59,7 +59,7 @@ make  || exit  -101
 git diff >  ${odir}/diff
 dutbin=`mktemp "${odir}/vmpdbin.XXX"` || exit -11
 allcollateralfiles=$dutbin
-mv viamillipede $dutbin
+mv obj/viamillipede $dutbin
 
 #____________________________________________________________________________
 t_est_dummy(){
