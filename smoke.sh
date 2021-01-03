@@ -2,7 +2,6 @@
 #set -x
 
 morinfo() {
-	echo moar
 	set -x
 	for ipid in $prisoners; do
 		echo more info from $ipid
@@ -137,7 +136,8 @@ t_bearer_for_ssh() {
 $dutbin charmode threads ${threadcount} terminate 16622  tx localhost 4545 rx 4546  verbose $verboarg &
 termpid=$!
 
-$dutbin charmode threads ${threadcount} initiate localhost 6622  tx localhost 4546 rx 4545  verbose $verboarg &
+
+$dutbin charmode threads ${threadcount} initiate localhost 22  tx localhost 4546 rx 4545  verbose $verboarg &
 nitpid=$!
 prisoners="$prisoners $nitpid $termpid"
 sleep 3
