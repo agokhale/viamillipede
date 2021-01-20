@@ -68,7 +68,11 @@ void rxworker(struct rxworker_s *rxworker) {
         whisper ( 3, "readlen:0x%x expected 0x%zx", readlen, rxiov.iov_len ); 
         rxinfo(rxworker->rxconf_parent);
       }
-      assert(pkt.preamble == preamble_cannon_ul && "preamble check");
+      if(pkt.preamble != preamble_cannon_ul ) {
+        whisper (1, "preamble check failure got %lx != %lx", pkt.preamble, preamble_cannon_ul);
+        rxinfo(rxworker->rxconf_parent);
+        assert(-1);
+      } 
       assert(pkt.size >= 0);
       assert(pkt.size <= kfootsize);
       rxworker->leg=pkt.leg_id; 
