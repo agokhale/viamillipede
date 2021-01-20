@@ -76,6 +76,10 @@ void rxworker(struct rxworker_s *rxworker) {
       whisper(9, "rxw:%02i leg:%lx siz:%lu op:%lx caught new leg seqdelta:%d\n",
               rxworker->id, pkt.leg_id, pkt.size, pkt.opcode,  
               (int)pkt.leg_id - (int)rxworker->rxconf_parent->next_leg); // how > 15?
+      if ( (int)pkt.leg_id - (int)rxworker->rxconf_parent->next_leg >  rxworker->rxconf_parent->workercount ) {
+        whisper ( 3, "long queues detected, waiting")
+        usleep( 100000); 
+      } 
       int remainder = pkt.size;
       int remainder_counter = 0;
       assert(remainder <= kfootsize);
