@@ -64,13 +64,18 @@ void rxworker(struct rxworker_s *rxworker) {
       rxiov.iov_base = ((u_char *)&pkt); //  really?
       rxworker->state='a';
       readlen = readv(rxworker->sockfd, &rxiov, 1);
+      if (readlen !=  rxiov.iov_len ) {
+        whisper ( 3, "readlen:0x%x expected 0x%zx", readlen, rxiov.iov_len ); 
+        rxinfo(rxworker->rxconf_parent);
+      }
       assert(pkt.preamble == preamble_cannon_ul && "preamble check");
       assert(pkt.size >= 0);
       assert(pkt.size <= kfootsize);
       rxworker->leg=pkt.leg_id; 
       rxworker->legop=pkt.opcode; 
-      whisper(9, "rxw:%02i leg:%lx siz:%lu op:%lx caught new leg\n",
-              rxworker->id, pkt.leg_id, pkt.size, pkt.opcode);
+      whisper(9, "rxw:%02i leg:%lx siz:%lu op:%lx caught new leg seqdelta:%d\n",
+              rxworker->id, pkt.leg_id, pkt.size, pkt.opcode,  
+              (int)pkt.leg_id - (int)rxworker->rxconf_parent->next_leg); // how > 15?
       int remainder = pkt.size;
       int remainder_counter = 0;
       assert(remainder <= kfootsize);
