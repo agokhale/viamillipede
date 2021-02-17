@@ -105,6 +105,59 @@ u_long stopwatch_stop(struct timespec *t) {
   u_long ret = (secondsdiff * 1000000) + (nanoes / 1000); // in usec
   return ret;
 }
+/*https://fossies.org/linux/iperf/src/tcp_info.chttps://fossies.org/linux/iperf/src/tcp_info.c*/
+#define W8(A) printf ("\t"#A":\t %d \n",(int)linfo.A);
+#define W32(A) printf ("\t"#A":\t %x \n",(unsigned int)linfo.A);
+void tcp_dumpinfo(int sfd )   {
+  struct tcp_info linfo; 
+  socklen_t infolen = sizeof ( linfo); 
+  getsockopt(sfd, IPPROTO_TCP, TCP_INFO, &linfo, &infolen);
+  checkperror("__FUNCTION__");
+  whisper ( 6, "tcpinfo: fd %x \n",sfd);
+  whisper ( 6, "  tcpi_snd_mss: %d \n",linfo.tcpi_snd_mss);
+  W8(tcpi_state)
+  W8(__tcpi_ca_state)
+  W8(__tcpi_retransmits)
+  W8(__tcpi_probes)
+  W8(__tcpi_backoff)
+  W8(tcpi_options)
+  W8(tcpi_snd_wscale)
+  W8 (tcpi_rcv_wscale )
+  W32       (tcpi_rto              )
+  W32       (__tcpi_ato)
+  W32       (tcpi_snd_mss         )
+  W32       (tcpi_rcv_mss        )
+  W32       (__tcpi_unacked)
+  W32       (__tcpi_sacked)
+  W32       (__tcpi_lost)
+  W32       (__tcpi_retrans)
+  W32       (__tcpi_fackets)
+  W32       (__tcpi_last_data_sent)
+  W32       (__tcpi_last_ack_sent   )
+  W32       (tcpi_last_data_recv   )
+  W32       (__tcpi_last_ack_recv)
+  W32       (__tcpi_pmtu)
+  W32       (__tcpi_rcv_ssthresh)
+  W32       (tcpi_rtt               )
+  W32       (tcpi_rttvar           )
+  W32       (tcpi_snd_ssthresh    )
+  W32       (tcpi_snd_cwnd       )
+  W32       (__tcpi_advmss)
+  W32       (__tcpi_reordering)
+  W32       (__tcpi_rcv_rtt)
+  W32       (tcpi_rcv_space        )
+        /* FreeBSD extensions to tcp_info. */
+  W32       (tcpi_snd_wnd           )
+  W32       (tcpi_snd_bwnd          )
+  W32       (tcpi_snd_nxt          )
+  W32       (tcpi_rcv_nxt         )
+  W32       (tcpi_toe_tid           )
+  W32       (tcpi_snd_rexmitpack   )
+  W32       (tcpi_rcv_ooopack     )
+  W32       (tcpi_snd_zerowin    )
+
+  
+}
 int tcp_geterr( int sfd) {
     int sockerr;
     u_int sockerrsize = sizeof(sockerr); // uhg
@@ -138,10 +191,10 @@ int tcp_getsockinfo1( int si,int whatsel ) {
 }
 void tcp_dump_sockfdparams ( int sfd) {
   if ( sfd > 0 ){ 
-    whisper( 18, "%s:%x ","RCVBUF", tcp_getsockinfo1( sfd,SO_RCVBUF));
-    whisper( 18, "%s:%x ","SO_SNDBUF", tcp_getsockinfo1( sfd,SO_SNDBUF));
-    whisper( 18, "%s:%x ","SO_SNDLOWAT", tcp_getsockinfo1( sfd,SO_SNDLOWAT));
-    whisper( 18, "%s:%x ","SO_RCVLOWAT", tcp_getsockinfo1( sfd,SO_RCVLOWAT));
+    whisper( 16, "%s:%x ","RCVBUF", tcp_getsockinfo1( sfd,SO_RCVBUF));
+    whisper( 16, "%s:%x ","SO_SNDBUF", tcp_getsockinfo1( sfd,SO_SNDBUF));
+    whisper( 16, "%s:%x ","SO_SNDLOWAT", tcp_getsockinfo1( sfd,SO_SNDLOWAT));
+    whisper( 16, "%s:%x ","SO_RCVLOWAT", tcp_getsockinfo1( sfd,SO_RCVLOWAT));
     whisper( 16, "\nsocketfd:%i\n ",sfd);
   }
 }

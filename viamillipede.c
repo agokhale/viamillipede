@@ -71,6 +71,7 @@ int main(int argc, char **argv) {
   gcheckphrase = "yoes";
   (argc > 1) ?: usage();
   txconf.worker_count = 16;
+  txconf.waits = 0;
   txconf.target_port_count = 0;
   txconf.target_port_cursor = 0;
   ioconf.terminate_port = 0;
@@ -183,12 +184,16 @@ int main(int argc, char **argv) {
     if (strcmp(argv[arg_cursor], "prbs") == 0) {
       mode |= MODE_PRBS;
       arg_cursor++;
+      assert ( arg_cursor < argc && 
+             "prbs requires an arguement eg: 0xa5a55a5a");
       gprbs_seed = strtoul(argv[arg_cursor], NULL, 0);
       whisper(11, "prbs mode seed %lu", gprbs_seed);
     }
     if (strcmp(argv[arg_cursor], "leglimit") == 0) {
       mode |= MODE_PRBS;
       arg_cursor++;
+      assert ( arg_cursor < argc && 
+             "leglinmit requires an arguement integer number of legs");
       gleg_limit = strtoul(argv[arg_cursor], NULL, 0);
       whisper(11, "legs limited to %lu", gprbs_seed);
     }

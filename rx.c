@@ -77,12 +77,12 @@ void rxworker(struct rxworker_s *rxworker) {
       assert(pkt.size <= kfootsize);
       rxworker->leg=pkt.leg_id; 
       rxworker->legop=pkt.opcode; 
+      int order_skew = (int)pkt.leg_id - (int)rxworker->rxconf_parent->next_leg;
       whisper(9, "rxw:%02i leg:%lx siz:%lu op:%lx caught new leg seqdelta:%d\n",
               rxworker->id, pkt.leg_id, pkt.size, pkt.opcode,  
-              (int)pkt.leg_id - (int)rxworker->rxconf_parent->next_leg); // how > 15?
-      if ( (int)pkt.leg_id - (int)rxworker->rxconf_parent->next_leg >  rxworker->rxconf_parent->workercount ) {
-        whisper ( 3, "long queues detected, waiting")
-        usleep( 100000); 
+              order_skew); // how > 15?
+      if ( order_skew >  rxworker->rxconf_parent->workercount ) {
+        whisper ( 3, "rx: leg out of order; a lot ")
       } 
       int remainder = pkt.size;
       int remainder_counter = 0;

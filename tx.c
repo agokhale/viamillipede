@@ -23,6 +23,7 @@ char tx_state_set(struct txworker_s *txworker, char instate) {
   return ret_tmp;
 }
 
+#define ksndbuflimit 0x10000 // 64k
 int dispatch_idle_worker(struct txconf_s *txconf) {
   int retcode = -1;
   txstatus(txconf, 5);
@@ -48,6 +49,7 @@ int dispatch_idle_worker(struct txconf_s *txconf) {
       // sleeping here indicates we do not have enough workers
       //   or enough througput on the network
       usleep(sleep_thief);
+      txconf->waits++;
     }
   } // we have a winner, return it
   assert(retcode < kthreadmax);
@@ -426,13 +428,18 @@ void txlaunchworkers(struct txconf_s *txconf) {
 void txstatus(struct txconf_s *txconf, int log_level) {
   //whisper(log_level, "\nstate:leg-remainder(k)");
   for (int i = 0; i < txconf->worker_count; i++) {
-    tcp_dump_sockfdparams( txconf->workers[i].sockfd );
+    int sfd =  txconf->workers[i].sockfd;
+    tcp_dump_sockfdparams( sfd );
+    if ( gverbose > log_level ) { 
+      tcp_dumpinfo( sfd);
+    }
     whisper(log_level, "{t:%c:%lx}\t", tx_state(&txconf->workers[i]),
             txconf->workers[i].pkt.leg_id
     );
     if (i % 8 == 7) {
       whisper(log_level, "\n");
     }
+
   }
   whisper(log_level, "\n");
 }

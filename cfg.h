@@ -75,6 +75,7 @@ struct txconf_s {
   int input_eof;
   int done;
   int input_fd;
+  u_long waits;
   struct ioconf_s *ioconf;
 };
 

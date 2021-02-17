@@ -24,5 +24,7 @@ int tcp_recieve_prep(struct sockaddr_in *sa, int *socknum, int inport);
 int tcp_accept(struct sockaddr_in *sa, int socknum);
 void tcp_dump_sockfdparams(int sockfd);
 int initiate_relay();
+int tcp_getsockinfo1( int si,int whatsel );
 
+void tcp_dumpinfo(int sfd );
 #endif
