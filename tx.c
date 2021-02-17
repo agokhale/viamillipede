@@ -139,54 +139,15 @@ int txpush(struct txworker_s *txworker) {
   int writelen = -1;
   int cursor = 0;
   tx_state_set(txworker, 'a'); // preAmble
-#define AIO
-#ifndef AIO
-  int pktwrret =
-      write(txworker->sockfd, &txworker->pkt, sizeof(struct millipacket_s));
-  assert(pktwrret == sizeof(struct millipacket_s) &&
-         "millipacket not written ");
-#else
   struct iovec writevec[2];
   writevec[0].iov_base=&(txworker->pkt);
   writevec[0].iov_len=sizeof(struct millipacket_s);
-#endif
   txworker->writeremainder = txworker->pkt.size;
   assert(txworker->writeremainder <= kfootsize);
   if (gprbs_seed > 0) {
     prbs_gen((unsigned long *)txworker->buffer,
              gprbs_seed + txworker->pkt.leg_id, kfootsize);
   }
-#ifndef AIO
-  while (txworker->writeremainder && retcode) {
-    int minedsize = MIN(MAXBSIZE, txworker->writeremainder);
-    tx_state_set(txworker, 'P'); // 'P'ush
-    if (errno != 0) {
-      whisper(2, "nuisance errno %i before write to socket leg:%lx", errno,
-              txworker->pkt.leg_id);
-    }
-    if (gdelay_us) {
-      tx_state_set(txworker, 'W'); // 'W'wait
-      usleep(gdelay_us);
-      tx_state_set(txworker, 'P'); // 'P'ush
-    }
-    writelen =
-        write(txworker->sockfd, ((txworker->buffer) + cursor), minedsize);
-    if (errno != 0) {
-      // indicate that this needs retried
-      txstatus(txworker->txconf_parent, 7);
-      //XXXXX 
-      whisper(2, " errno %i after write to socket leg:%lx", errno,
-              txworker->pkt.leg_id);
-      retcode = 0;
-    };
-    checkperror(" write to socket");
-    tx_state_set(txworker, 'p'); // 'p'ush complete
-    txworker->writeremainder -= writelen;
-    cursor += writelen;
-    whisper(13, "txw:%02i psh leg:%lx.(+%x -%x)  ", txworker->id,
-            txworker->pkt.leg_id, writelen, txworker->writeremainder);
-  }
-#else
   writevec[1].iov_base=txworker->buffer;
   writevec[1].iov_len=txworker->pkt.size;
   if (gdelay_us) {
@@ -201,7 +162,6 @@ int txpush(struct txworker_s *txworker) {
   checkperror("aiowrite");
   assert ( txworker->writeremainder + sizeof (struct millipacket_s ) == writeret);
   txworker->writeremainder=0;
-#endif
 
   checkperror("writesocket");
   pthread_mutex_lock(&(txworker->txconf_parent->mutex));
