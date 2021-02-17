@@ -1,8 +1,5 @@
 #include "worker.h"
 
-// use condvars
-#define kv 1
-
 extern char *gcheckphrase;
 extern unsigned long gprbs_seed;
 unsigned long grx_saved_checksum = 0xff;
@@ -16,9 +13,7 @@ void rxworker(struct rxworker_s *rxworker) {
   char checkphrase[] = "yoes";
   buffer = calloc(1, (size_t)kfootsize);
   rxworker->state='i';
-#ifdef kv
   assert(pthread_cond_init(&rxworker->rxconf_parent->seq_cv, NULL) == 0);
-#endif
 #ifdef FREEBSD
   setproctitle("rx %d", rxworker->id);
 #endif 
