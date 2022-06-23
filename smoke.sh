@@ -1,5 +1,5 @@
 #!/bin/sh 
-#set -x
+#set -ex
 
 morinfo() {
 	set -x
@@ -78,7 +78,7 @@ test_fin error
 t_est_zeros_reference() {
 test_setup  referencezeros10g 10000
 #output=`time dd if=/dev/zero  bs=2m count=5000 2>- |  dd of=/dev/null bs=2m `
-output=`time dd if=/dev/zero  bs=2m count=5000 2>-  > /dev/null `
+output=`time dd if=/dev/zero  bs=2m count=5000   > /dev/null `
 echo $output
 test_fin
 }

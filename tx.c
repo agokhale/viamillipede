@@ -389,9 +389,10 @@ void txstatus(struct txconf_s *txconf, int log_level) {
   //whisper(log_level, "\nstate:leg-remainder(k)");
   for (int i = 0; i < txconf->worker_count; i++) {
     int sfd =  txconf->workers[i].sockfd;
-    tcp_dump_sockfdparams( sfd );
+    //tcp_dump_sockfdparams( sfd );
+    checkperror("tcp_dump_sockfdparams");
     if ( gverbose > log_level ) { 
-      tcp_dumpinfo( sfd);
+      //tcp_dumpinfo( sfd);
     }
     whisper(log_level, "{t:%c:%lx}\t", tx_state(&txconf->workers[i]),
             txconf->workers[i].pkt.leg_id

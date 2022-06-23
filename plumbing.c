@@ -191,10 +191,15 @@ int tcp_getsockinfo1( int si,int whatsel ) {
 }
 void tcp_dump_sockfdparams ( int sfd) {
   if ( sfd > 0 ){ 
+    checkperror(" wat?"); 
     whisper( 16, "%s:%x ","RCVBUF", tcp_getsockinfo1( sfd,SO_RCVBUF));
+    checkperror(" RCVwat?"); 
     whisper( 16, "%s:%x ","SO_SNDBUF", tcp_getsockinfo1( sfd,SO_SNDBUF));
+    checkperror(" SNDBUFwat?"); 
     whisper( 16, "%s:%x ","SO_SNDLOWAT", tcp_getsockinfo1( sfd,SO_SNDLOWAT));
+    checkperror(" LOWATwat?"); 
     whisper( 16, "%s:%x ","SO_RCVLOWAT", tcp_getsockinfo1( sfd,SO_RCVLOWAT));
+    checkperror(" RCVlowatwat?"); 
     whisper( 16, "\nsocketfd:%i\n ",sfd);
   }
 }

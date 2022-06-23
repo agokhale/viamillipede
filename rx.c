@@ -77,7 +77,8 @@ void rxworker(struct rxworker_s *rxworker) {
               rxworker->id, pkt.leg_id, pkt.size, pkt.opcode,  
               order_skew); // how > 15?
       if ( order_skew >  rxworker->rxconf_parent->workercount ) {
-        whisper ( 3, "rx: leg out of order; a lot ")
+        whisper ( 7, "rx: leg out of order skew:0x%x >  workers:0x%x ", 
+          order_skew, rxworker->rxconf_parent->workercount);
       } 
       int remainder = pkt.size;
       int remainder_counter = 0;
