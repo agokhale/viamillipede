@@ -71,6 +71,7 @@ void txingest(struct txconf_s *txconf) {
   u_long ingest_leg_counter = 0;
   txconf->stream_total_bytes = 0;
   whisper(16, "tx:ingest started on fd:%d", txconf->input_fd);
+  setvbuf( stdin, NULL, _IONBF, 0); 
   checkperror("nuisancse ingest err");
   pthread_mutex_lock(&(txconf->mutex));
   while (!txconf->done) {
