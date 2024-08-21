@@ -80,7 +80,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 + `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host. Optionally provide tx multiple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources shold inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
 	+ Read stdin and push it over the network unless terminate is specified. 
 	+ Full duplex, rx and tx may be used concurrently to provide a transparent full duplex pipe. Happy shell throwing!
-		+ Two distinct port numbers are requied, one rx port for each side, with the tx on the other host pointing at the rx
+		+ Two distinct port numbers are required, one rx port for each side, with the tx on the other host pointing at the rx
 		+ ```host1: ./vimaillipede rx  7788 tx host2 9900 charmode ```
 		+ ```host2: ./vimaillipede rx  9900 tx host1 7788 charmode ```
 	+ The source and destination machine may have multiple interfaces and may have:
