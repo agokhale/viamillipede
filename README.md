@@ -180,7 +180,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ appropriate  paranoia vs. performance up to you
 	+ enigma, rot39, morse?
 
-### Check the smoke.sh testscrip  for detailed examples of possible uses. 
+### Check the smoke.sh testscript  for detailed examples of possible uses. 
 
 ### Theory of operation
 ![alt text](theory_operation_viamillipede.svg "theory of operation")
