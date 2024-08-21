@@ -374,7 +374,7 @@ void txlaunchworkers(struct txconf_s *txconf) {
     assert(ret == 0 && "pthread launch error");
     worker_cursor++;
     usleep(10 * 1000);
-    // 10ms standoff  to increase the likelyhood that PCBs are available on the
+    // 10ms standoff  to increase the likelihood that PCBs are available on the
     // rx side to answer requests
   }
   /*ret =
