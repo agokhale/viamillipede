@@ -1,11 +1,11 @@
 #include "worker.h"
-/* terminate and intiate allow viamillipede to talk to other sockets,
+/* terminate and initiate allow viamillipede to talk to other sockets,
    rather than the default stdin/stdout connection
   TOP: Do nexcessary tcp plumbing, then overwrite the io fd's
 
                        /------\
 tcp >----> viamillipede--------viamillipede >---> tcp
-(client)   (terminate) \------/ (initaite)       (server)
+(client)   (terminate) \------/ (initiate)       (server)
                         (parallel
 			  tcp
 			sessions)
