@@ -204,7 +204,7 @@ int main(int argc, char **argv) {
          "can't initiate and termimate in parallel");
   DTRACE_PROBE(viamillipede, init);
   if (mode & MODE_RX)
-    rx(&rxconf); // rx must preceed
+    rx(&rxconf); // rx must precede
   if (mode & MODE_TX)
     tx(&txconf);
   assert(
