@@ -57,7 +57,7 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
       dest_cursor += readsize;
       if (readsize < MAXBSIZE && !charmode) {
         // discourage tinygrams - they just beat us up and chew the cpu
-        // XXX histgram the readsize and use ema to track optimal effort
+        // XXX histogram the readsize and use ema to track optimal effort
         sleep_thief++;
         usleep(sleep_thief);
       } else {
