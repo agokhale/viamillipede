@@ -184,7 +184,7 @@ void rxworker(struct rxworker_s *rxworker) {
           rxworker->rxconf_parent->done_mbox = 1;
           pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
         } else if (pkt.opcode == feed_more) {
-          // the last frame will be empty and have a borken cksum
+          // the last frame will be empty and have a broken cksum
           if (pkt.checksum) {
             rx_checksum =
                 mix(grx_saved_checksum + pkt.leg_id, buffer, pkt.size);
