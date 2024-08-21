@@ -17,7 +17,7 @@ int terminate(struct txconf_s *txconf, struct rxconf_s *rxconf,
   /** terminate accepts a tcp connection and connects viamillipede 
     as a full duplex tcp to tcp multiplexor:
     nd fixes up the ioconf structure  for
-   ingest the tcp socket returns the file descripter chosen
+   ingest the tcp socket returns the file descriptor chosen
   returns: -6( incomplete) , 1(stdiout), 0(stdin==STDIN_FILENO)
   */
   int retc = -6;
