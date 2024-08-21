@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
       mode |= MODE_PRBS;
       arg_cursor++;
       assert ( arg_cursor < argc && 
-             "leglinmit requires an argument integer number of legs");
+             "leglimit requires an argument integer number of legs");
       gleg_limit = strtoul(argv[arg_cursor], NULL, 0);
       whisper(11, "legs limited to %lu", gprbs_seed);
     }
