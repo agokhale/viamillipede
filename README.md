@@ -128,7 +128,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ A minimum of 3 threads is encoraged to preserve performance and resiliancy. 
 	+ ``` viamillipede tx foreign.shore.net 8834 threads 16 ```
 + checksum (only on transmitter). 
-	+ This is probably not required as the tcp stack and network layer will perform this autmatically
+	+ This is probably not required as the tcp stack and network layer will perform this automatically
 	+ part of the verification suite or for the paranoid user
 	+ uses a fast, not particularly stellar, method
 	+ transmitter only option.
