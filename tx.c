@@ -247,7 +247,7 @@ int tx_start_net(struct txworker_s *txworker) {
   /*
   starting sockets in parallel  can flood the remote end trivially on high bw
   networks resulting in
-  this syndrome and a partially connnected graph
+  this syndrome and a partially connected graph
   it looks like this on the remote side:
   sonewconn: pcb 0xfffff8014ba261a8: Listen queue overflow: 10 already in queue
   awaiting acceptance (2 occurrences)
