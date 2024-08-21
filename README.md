@@ -194,7 +194,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
         	+ rot39, od
 	+ xdr/rpc marshalling for architecture independence
  		+ serializing a struct is not ideal
-	+ reverse channel capablity  *done 20180830
+	+ reverse channel capability  *done 20180830
 		+ millipedesh ? millipederpc?
 		+ specify rx/tx at the same time + fifo?
 		+ is this even a good idea? Exploit generator?
