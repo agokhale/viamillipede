@@ -353,7 +353,7 @@ void txlaunchworkers(struct txconf_s *txconf) {
   int ret;
   checkperror("nuisance before launch");
   while (worker_cursor < txconf->worker_count) {
-    tx_state_set(&txconf->workers[worker_cursor], '-'); // unitialized
+    tx_state_set(&txconf->workers[worker_cursor], '-'); // uninitialized
     txconf->workers[worker_cursor].txconf_parent =
         txconf;                                    // allow inspection/inception
     txconf->workers[worker_cursor].pkt.leg_id = 0; //
