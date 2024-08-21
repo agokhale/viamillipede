@@ -125,7 +125,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ set only on transmitter
 	+ tune this value to suit your need
 	+ An upper limit of 16 is statically compiled in, higher thread count is unlikely to be productive. 
-	+ A minimum of 3 threads is encouraged to preserve performance and resiliancy. 
+	+ A minimum of 3 threads is encouraged to preserve performance and resiliency. 
 	+ ``` viamillipede tx foreign.shore.net 8834 threads 16 ```
 + checksum (only on transmitter). 
 	+ This is probably not required as the tcp stack and network layer will perform this automatically
