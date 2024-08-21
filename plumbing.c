@@ -43,7 +43,7 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
     readsize = read(fd, dest_cursor, MIN(MAXBSIZE, remainder));
     if (errno != 0) {
       checkperror("bufferfill read err");
-      whisper(3, "erno: %i  readsize %ld requestedsiz: %d  fd:%i dest:%p \n",
+      whisper(3, "errno: %i  readsize %ld requestedsiz: %d  fd:%i dest:%p \n",
               errno, readsize, MIN(MAXBSIZE, remainder), fd, dest_cursor);
     }
     if (readsize < 0) {
