@@ -181,7 +181,7 @@ int txpush(struct txworker_s *txworker) {
   return retcode;
 }
 int tx_tcp_connect_next(struct txconf_s *txconf) {
-  /** pick a port/host from the list, cycleing through  them
+  /** pick a port/host from the list, cycling through  them
   this will bias the two lowest target port entries are favored.
   If they are busy and more workers are available;use more target ports
   monitorting txstatus() output will reveal the distribution
