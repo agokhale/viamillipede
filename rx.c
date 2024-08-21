@@ -119,7 +119,7 @@ void rxworker(struct rxworker_s *rxworker) {
                 ((remainder_counter++) % 16 == 0) ? (int)10 : (int)' ');
       }
       whisper(
-          10, "\nrxw:%02x leg:%lx buffer filled to :%x wating  on leg:%lx\n",
+          10, "\nrxw:%02x leg:%lx buffer filled to :%x waiting on leg:%lx\n",
           rxworker->id, pkt.leg_id, cursor, rxworker->rxconf_parent->next_leg);
 
       if (gprbs_seed > 0 && !restartme) {
