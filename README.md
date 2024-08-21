@@ -155,7 +155,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ rx will verify the bitstream and leave it on stdout
 + leglimit <long> stop after a number of legs
 	+ use to provide a bounded tranmission length
-	+ measureed in 2MiB chunks
+	+ measured in 2MiB chunks
 + delayus <long> delay N  microseconds
 	+ cap throughput crudely
 	+ delay applied to every 2MiB   boundary
