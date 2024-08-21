@@ -23,7 +23,7 @@ int terminate(struct txconf_s *txconf, struct rxconf_s *rxconf,
   int retc = -6;
   if (ioconf->terminate_port > 0) {
     struct sockaddr_in sa;
-    tcp_recieve_prep(&sa, &(ioconf->terminate_socket), ioconf->terminate_port);
+    tcp_receive_prep(&sa, &(ioconf->terminate_socket), ioconf->terminate_port);
     whisper(6, "term: accepting on %d", ioconf->terminate_port);
     txconf->input_fd =
         tcp_accept(&sa, ioconf->terminate_socket); // XX should we block?

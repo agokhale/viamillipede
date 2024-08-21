@@ -246,7 +246,7 @@ int tcp_connect(char *host, int port) {
   checkperror ( "tcp_connection ?? ");
   return (ret_sockfd);
 }
-int tcp_recieve_prep(struct sockaddr_in *sa, int *socknum, int inport) {
+int tcp_receive_prep(struct sockaddr_in *sa, int *socknum, int inport) {
   int one = 1;
   int retcode;
   int lsock = -1;

@@ -20,7 +20,7 @@ void rx(struct rxconf_s *);
 int rx_poll(struct rxconf_s *);
 void rxinfo(struct rxconf_s *);
 int tcp_connect(char *host, int port);
-int tcp_recieve_prep(struct sockaddr_in *sa, int *socknum, int inport);
+int tcp_receive_prep(struct sockaddr_in *sa, int *socknum, int inport);
 int tcp_accept(struct sockaddr_in *sa, int socknum);
 void tcp_dump_sockfdparams(int sockfd);
 int initiate_relay();

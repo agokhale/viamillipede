@@ -223,7 +223,7 @@ void rxlaunchworkers(struct rxconf_s *rxconf) {
   rxconf->done_mbox = 0;
   rxconf->next_leg = 0; // initialize sequencer
   setvbuf( stdout, NULL, _IONBF, 0);
-  if (tcp_recieve_prep(&(rxconf->sa), &(rxconf->socknum), rxconf->port) != 0) {
+  if (tcp_receive_prep(&(rxconf->sa), &(rxconf->socknum), rxconf->port) != 0) {
     whisper(1, "rx: tcp prep failed. this is unfortunate. ");
     exit(ENOTSOCK);
   }

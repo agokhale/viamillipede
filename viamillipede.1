@@ -75,7 +75,7 @@ TCP connections are friable and IP is best effort to preserve its economy.  TCP 
 	` echo "Osymandias" | viamillipede tx host1.yoyodyne.com 8834  `
 	
 ### Options:
-+ `rx <portnum> ` Become a reciever. 
++ `rx <portnum> ` Become a receiver. 
 + `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host. Optionally provide tx multiple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources shold inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
      + The source and destination machine may have multiple interfaces and may have:
           + varying layer1 media ( ethernet, serial, Infiniband , 1488, Carrier Pidgeon, insects, ntb)
@@ -103,7 +103,7 @@ TCP connections are friable and IP is best effort to preserve its economy.  TCP 
      + periodically close sockets to simulate real work network trouble  and tickle recovery code
      + deterministic for how many operations to allow before a failure
      + `viamillipede tx localhost 12334 chaos 1731`
-+ checkphrase <char[4]> provide lightweight guard against a stale or orphaned reciever,
++ checkphrase <char[4]> provide lightweight guard against a stale or orphaned receiver,
      + not a security mechanism
       Transmitter and Reciever word[4] must match exactly.
      

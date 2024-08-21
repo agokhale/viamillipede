@@ -73,7 +73,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 + ``` viamillipede rx 8834   | zfs recv trinity/destset ```
 	
 ### Options:
-+ `rx <portnum> ` Become a reciever. Write output to stdout unless initiate is specified.  
++ `rx <portnum> ` Become a receiver. Write output to stdout unless initiate is specified.  
 	+ If used concurrently with tx; full duplex connections are possible .
 	+ If used with initiate it will delay tcp socket startup untill there is data in the transport
 	+ if used with terminate it will delay reading untill the tunneled TCP connection is started
@@ -139,7 +139,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ periodically close sockets to simulate real work network trouble  and tickle recovery code
 	+ deterministic for how many operations to allow before a failure
 	+ ``` viamillipede tx localhost 12334 chaos 1731```
-+ checkphrase <char[4]> provide lightweight guard against a stale or orphaned reciever,
++ checkphrase <char[4]> provide lightweight guard against a stale or orphaned receiver,
 	+ not a security/authentication mechanism
 	+ Transmitter and Reciever word[4] must match exactly.
 	+ ``` viamillipede tx localhost 12334 checkphrase wat!```
