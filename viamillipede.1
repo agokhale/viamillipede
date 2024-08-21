@@ -76,7 +76,7 @@ TCP connections are friable and IP is best effort to preserve its economy.  TCP 
 	
 ### Options:
 + `rx <portnum> ` Become a reciever. 
-+ `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host. Optionally provide tx muliple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources shold inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
++ `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host. Optionally provide tx multiple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources shold inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
      + The source and destination machine may have multiple interfaces and may have:
           + varying layer1 media ( ethernet, serial, Infiniband , 1488, Carrier Pidgeon, insects, ntb)
           + varying layer2 attachment ( vlan, aggregation )
@@ -117,7 +117,7 @@ TCP connections are friable and IP is best effort to preserve its economy.  TCP 
 + use ipsec/vpn and live with the speed
 + provide ssh tcp forwarding endpoints
 	+ from the tx host:` ssh -N -L 12323:localhost:12323 tunneluser@rxhost `
-	+ use mutiple port instances to  get parallelism
+	+ use multiple port instances to  get parallelism
 	* use a trusted peers tcp encapsulation tunnel to offload crypto
 + use openssl in  stream, take your crypto into your own hands
 	+ ` /usr/bin/openssl enc -aes-128-cbc -k swordfIIIsh -S 5A  `

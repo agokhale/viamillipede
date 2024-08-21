@@ -77,7 +77,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ If used concurrently with tx; full duplex connections are possible .
 	+ If used with initiate it will delay tcp socket startup untill there is data in the transport
 	+ if used with terminate it will delay reading untill the tunneled TCP connection is started
-+ `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host. Optionally provide tx muliple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources shold inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
++ `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host. Optionally provide tx multiple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources shold inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
 	+ Read stdin and push it over the network unless terminate is specified. 
 	+ Full duplex, rx and tx may be used concurrently to provide a transparent full duplex pipe. Happy shell throwing!
 		+ Two distinct port numbers are requied, one rx port for each side, with the tx on the other host pointing at the rx
@@ -166,7 +166,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 + use ipsec/vpn and live with the speed
 + provide ssh tcp forwarding endpoints
 	+ from the tx host:` ssh -N -L 12323:localhost:12323 tunneluser@rxhost `
-	+ use mutiple port instances to  get parallelism
+	+ use multiple port instances to  get parallelism
 	* use a trusted peers tcp encapsulation tunnel to offload crypto
 + use viamillipede to armour ssh connections
 	+ not reccomended for poor performance
