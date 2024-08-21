@@ -98,7 +98,7 @@ int main(int argc, char **argv) {
     if (strcmp(argv[arg_cursor], "tx") == 0) {
       /* tx may be defined multiple times to achieve a balance across multiple L3 routes
        ei:  tx localhost 12323 tx tardis.co.ac.uk 12323 tx otherhost 123232
-       but they all must the same machine behind the ip addres set */
+       but they all must the same machine behind the ip address set */
       assert(++arg_cursor < argc && "tx needs <host> and <port> arguments");
       assert(strlen(argv[arg_cursor]) > 0 && "hostname seems fishy");
       checkperror(" main nuiscance : hostname err");
