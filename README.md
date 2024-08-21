@@ -169,7 +169,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ use multiple port instances to  get parallelism
 	* use a trusted peers tcp encapsulation tunnel to offload crypto
 + use viamillipede to armour ssh connections
-	+ not reccomended for poor performance
+	+ not recommended for poor performance
 	+ for the target ``` viamillipede charmode initiate localhost 22 tx txhost 4545 rx 5555 ```
 	+ from the source ``` viamillipede charmode terminate 8022  tx rxhost 5555 rx 4545 ```
 	+ the use the alternate ssh port  on the source ``` ssh -p 8022 localhost ```
