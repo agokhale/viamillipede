@@ -105,7 +105,7 @@ time_stop()  {
 
 zsend_shunt () {
 	#provide a reference for how fast the storage is, and what the pipe capability is
-	# actually we just wait on md5 mosttly
+	# actually we just wait on md5 mostly
 	time_start
 	$txrsh "zfs send $txpool/$txdataset@initial > /dev/null"
 	time_stop zsend_shunt
