@@ -161,14 +161,14 @@ int main(int argc, char **argv) {
       whisper(11, "checkphrase set to %s", gcheckphrase);
     }
     // terminate 5656
-    // command setup listen for connecton at port
+    // command setup listen for connection at port
     if (strcmp(argv[arg_cursor], "terminate") == 0) {
       assert(++arg_cursor < argc && "terminate  needs  port ");
       ioconf.terminate_port = atoi(argv[arg_cursor]);
       whisper(11, "termport set to %d", ioconf.terminate_port);
     }
     // initiate hathor 5656
-    // command setup start connecton at port
+    // command setup start connection at port
     if (strcmp(argv[arg_cursor], "initiate") == 0) {
       arg_cursor++;
       assert(strlen(argv[arg_cursor]) > 0 && "hostname seems fishy");
