@@ -105,7 +105,7 @@ u_long stopwatch_stop(struct timespec *t) {
   u_long ret = (secondsdiff * 1000000) + (nanoes / 1000); // in usec
   return ret;
 }
-/*https://fossies.org/linux/iperf/src/tcp_info.chttps://fossies.org/linux/iperf/src/tcp_info.c*/
+/*https://fossies.org/linux/iperf/src/tcp_info.c*/
 #define W8(A) printf ("\t"#A":\t %d \n",(int)linfo.A);
 #define W32(A) printf ("\t"#A":\t %x \n",(unsigned int)linfo.A);
 void tcp_dumpinfo(int sfd )   {
