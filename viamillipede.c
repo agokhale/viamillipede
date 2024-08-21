@@ -211,7 +211,7 @@ int main(int argc, char **argv) {
       terminate(&txconf, &rxconf, &ioconf) >=
       0); // STDIN == 0 and is valid this should block , as workers are launched
   // assert(initiate(&txconf, &rxconf, &ioconf) >= 1); // can't happen now must
-  // delay untill terminate happened On the remote
+  // delay until terminate happened On the remote
   // ingest must be delayed after initiate
   if ((mode & MODE_TX) && (ioconf.initiate_port == 0)) {
     initiate_relay();
