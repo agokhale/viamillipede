@@ -36,10 +36,10 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
   do {
     if (errno != 0) {
       whisper(3, "ignoring err %i\n", errno);
-      checkperror("bufferfill nuiscance err");
+      checkperror("bufferfill nuisance err");
       errno = 0;
     }
-    // reset nuiscances
+    // reset nuisances
     readsize = read(fd, dest_cursor, MIN(MAXBSIZE, remainder));
     if (errno != 0) {
       checkperror("bufferfill read err");

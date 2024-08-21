@@ -43,7 +43,7 @@ void rxworker(struct rxworker_s *rxworker) {
               rxworker->id, buffer[0], buffer[1], buffer[2], buffer[4]);
       exit(EDOM);
     }
-    checkperror("checkphrase  nuiscance ");
+    checkperror("checkphrase  nuisance ");
     if (write(rxworker->sockfd, okphrase, (size_t)2) != 2) {
       exit(ENOTCONN);
     }

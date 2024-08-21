@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
   ioconf.terminate_port = 0;
   ioconf.initiate_port = 0;
   errno = 0; // why, really why?!!!
-  checkperror(" main nuiscance: no possible reason, bad zoot! ");
+  checkperror(" main nuisance: no possible reason, bad zoot! ");
   while (arg_cursor < argc) {
     whisper(19, "  arg: %d, %s\n", arg_cursor, argv[arg_cursor]);
     checkperror("main arg proc");
@@ -93,7 +93,7 @@ int main(int argc, char **argv) {
       rxconf.port = (short)users_input_port;
       whisper(3, " being a server at port %i \n\n ", rxconf.port);
       mode |= MODE_RX;
-      checkperror(" main nuiscance: rx init error ");
+      checkperror(" main nuisance: rx init error ");
     }
     if (strcmp(argv[arg_cursor], "tx") == 0) {
       /* tx may be defined multiple times to achieve a balance across multiple L3 routes
@@ -101,7 +101,7 @@ int main(int argc, char **argv) {
        but they all must the same machine behind the ip address set */
       assert(++arg_cursor < argc && "tx needs <host> and <port> arguments");
       assert(strlen(argv[arg_cursor]) > 0 && "hostname seems fishy");
-      checkperror(" main nuiscance : hostname err");
+      checkperror(" main nuisance : hostname err");
       txconf.target_ports[txconf.target_port_count].name = argv[arg_cursor];
       arg_cursor++;
       assert(arg_cursor < argc &&
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
              "port number should be 0-USHRT_MAX");
       txconf.target_ports[txconf.target_port_count].port =
           (short)users_input_port;
-      checkperror(" main nuiscance:  port err2 ");
+      checkperror(" main nuisance:  port err2 ");
       whisper(2, "tx host: %s port:%i \n",
               txconf.target_ports[txconf.target_port_count].name,
               txconf.target_ports[txconf.target_port_count].port);
@@ -122,7 +122,7 @@ int main(int argc, char **argv) {
       ++arg_cursor;
       assert(arg_cursor < argc && "threads needs <numeber> arguments");
       txconf.worker_count = atoi(argv[arg_cursor]);
-      checkperror(" main nuiscance: thread count parse ");
+      checkperror(" main nuisance: thread count parse ");
       assert(txconf.worker_count <= 16 &&
              "it's unlikely that a large threadcount is beneficial");
     }
@@ -199,7 +199,7 @@ int main(int argc, char **argv) {
     }
     arg_cursor++;
   }
-  checkperror("main nuiscance: unspecified");
+  checkperror("main nuisance: unspecified");
   assert(!(ioconf.terminate_port > 0 && ioconf.initiate_port > 0) &&
          "can't initiate and termimate in parallel");
   DTRACE_PROBE(viamillipede, init);

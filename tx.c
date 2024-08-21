@@ -72,7 +72,7 @@ void txingest(struct txconf_s *txconf) {
   txconf->stream_total_bytes = 0;
   whisper(16, "tx:ingest started on fd:%d", txconf->input_fd);
   setvbuf( stdin, NULL, _IONBF, 0); 
-  checkperror("nuisancse ingest err");
+  checkperror("nuisance ingest err");
   pthread_mutex_lock(&(txconf->mutex));
   while (!txconf->done) {
     pthread_mutex_unlock(&(txconf->mutex));
@@ -467,11 +467,11 @@ void tx(struct txconf_s *txconf) {
   checkperror("nuisance setting signal");
   pthread_mutex_init(&(txconf->mutex), NULL);
   pthread_mutex_lock(&(txconf->mutex));
-  checkperror("nuicance  locking txconf");
+  checkperror("nuisance  locking txconf");
   txconf->done = 0;
   txconf->input_eof = 0;
   pthread_mutex_unlock(&(txconf->mutex));
   init_workers(txconf);
-  checkperror("nuicance tx initializing workers");
+  checkperror("nuisance tx initializing workers");
   txlaunchworkers(txconf);
 }
