@@ -14,7 +14,7 @@ tcp >----> viamillipede--------viamillipede >---> tcp
 
 int terminate(struct txconf_s *txconf, struct rxconf_s *rxconf,
               struct ioconf_s *ioconf) {
-  /** terminate accepts a tcp connection and conects viamillipede 
+  /** terminate accepts a tcp connection and connects viamillipede 
     as a full duplex tcp to tcp multiplexor:
     nd fixes up the ioconf structure  for
    ingest the tcp socket returns the file descripter chosen
