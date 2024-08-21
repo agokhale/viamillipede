@@ -47,7 +47,7 @@ int dispatch_idle_worker(struct txconf_s *txconf) {
       // investigate backoffs that are smarter. probably not helpful
       // sleep_thief <<= 1;
       // sleeping here indicates we do not have enough workers
-      //   or enough througput on the network
+      //   or enough throughput on the network
       usleep(sleep_thief);
       txconf->waits++;
     }
