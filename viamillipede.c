@@ -201,7 +201,7 @@ int main(int argc, char **argv) {
   }
   checkperror("main nuisance: unspecified");
   assert(!(ioconf.terminate_port > 0 && ioconf.initiate_port > 0) &&
-         "can't initiate and termimate in parallel");
+         "can't initiate and terminate in parallel");
   DTRACE_PROBE(viamillipede, init);
   if (mode & MODE_RX)
     rx(&rxconf); // rx must precede
