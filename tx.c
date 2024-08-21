@@ -238,7 +238,7 @@ int tx_start_net(struct txworker_s *txworker) {
     reconnect_fuse--;
   }
   if (reconnect_fuse == 0) {
-    // die, we were unable to work thorugh the list and get a grip
+    // die, we were unable to work through the list and get a grip
     tx_state_set(txworker, 'f');
     whisper(2, "txw:%02d reconnect fuse popped; giving up thread\n",
             txworker->id);
