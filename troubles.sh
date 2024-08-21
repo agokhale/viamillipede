@@ -1,6 +1,6 @@
 #!/bin/sh 
 set -x
-#testcase for the pathological loopback/ vey high rate lockup
+#testcase for the pathological loopback/ very high rate lockup
 
 foom() {
 	kill $txpid
