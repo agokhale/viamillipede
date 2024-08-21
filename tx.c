@@ -8,7 +8,7 @@ extern u_long gdelay_us;
 
 void txshutdown(struct txconf_s *txconf, int worker, u_long leg);
 char tx_state(struct txworker_s *txworker) {
-  // wrap the state with a locking primatitve
+  // wrap the state with a locking primitive
   pthread_mutex_lock(&txworker->mutex);
   char ret_tmp = txworker->state;
   pthread_mutex_unlock(&txworker->mutex);
@@ -16,7 +16,7 @@ char tx_state(struct txworker_s *txworker) {
 }
 
 char tx_state_set(struct txworker_s *txworker, char instate) {
-  // wrap the state with a locking primatitve
+  // wrap the state with a locking primitive
   pthread_mutex_lock(&txworker->mutex);
   char ret_tmp = txworker->state = instate;
   pthread_mutex_unlock(&txworker->mutex);
