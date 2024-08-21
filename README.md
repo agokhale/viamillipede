@@ -141,7 +141,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ ``` viamillipede tx localhost 12334 chaos 1731```
 + checkphrase <char[4]> provide lightweight guard against a stale or orphaned receiver,
 	+ not a security/authentication mechanism
-	+ Transmitter and Reciever word[4] must match exactly.
+	+ Transmitter and Receiver word[4] must match exactly.
 	+ ``` viamillipede tx localhost 12334 checkphrase wat!```
 	+ ``` viamillipede rx 12334 checkphrase wat!```
 + prbs <seed[uint16]> generate and verify a pseudorandom bitstream to stress test the transport
