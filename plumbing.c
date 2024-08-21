@@ -177,7 +177,7 @@ int tcp_setbufsize( int si) {
 	int val= 1 * MEGA_BYTES;
 	socklen_t vsiz=sizeof(val);
 	setsockopt( si,SOL_SOCKET, SO_RCVBUF, &val, vsiz); //nice to have
-	setsockopt( si,SOL_SOCKET, SO_SNDBUF, &val, vsiz);  // absloutlely necessary or single host lo0 use will lock up viamillipede
+	setsockopt( si,SOL_SOCKET, SO_SNDBUF, &val, vsiz);  // absolutely necessary or single host lo0 use will lock up viamillipede
 	checkperror("nowait");
 	
 	tcp_geterr(si);
