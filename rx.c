@@ -157,7 +157,7 @@ void rxworker(struct rxworker_s *rxworker) {
         }
         pthread_mutex_lock(
             &rxworker->rxconf_parent
-                 ->rxmutex); // do nothing but compare seqeuncer under lock
+                 ->rxmutex); // do nothing but compare sequencer under lock
       }
       pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
       if (!restartme) {
