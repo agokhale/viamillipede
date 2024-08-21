@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
     tx(&txconf);
   assert(
       terminate(&txconf, &rxconf, &ioconf) >=
-      0); // STDIN == 0 and is valid this should block , as workers are lauched
+      0); // STDIN == 0 and is valid this should block , as workers are launched
   // assert(initiate(&txconf, &rxconf, &ioconf) >= 1); // can't happen now must
   // delay untill terminate happened On the remote
   // ingest must be delayed after initiate
