@@ -139,7 +139,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ periodically close sockets to simulate real work network trouble  and tickle recovery code
 	+ deterministic for how many operations to allow before a failure
 	+ ``` viamillipede tx localhost 12334 chaos 1731```
-+ checkphrase <char[4]> provide lightweight guard agaist a stale or orphaned reciever,
++ checkphrase <char[4]> provide lightweight guard against a stale or orphaned reciever,
 	+ not a security/authentication mechanism
 	+ Transmitter and Reciever word[4] must match exactly.
 	+ ``` viamillipede tx localhost 12334 checkphrase wat!```
