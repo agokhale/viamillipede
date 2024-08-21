@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
       mode |= MODE_PRBS;
       arg_cursor++;
       assert ( arg_cursor < argc && 
-             "prbs requires an arguement eg: 0xa5a55a5a");
+             "prbs requires an argument eg: 0xa5a55a5a");
       gprbs_seed = strtoul(argv[arg_cursor], NULL, 0);
       whisper(11, "prbs mode seed %lu", gprbs_seed);
     }
@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
       mode |= MODE_PRBS;
       arg_cursor++;
       assert ( arg_cursor < argc && 
-             "leglinmit requires an arguement integer number of legs");
+             "leglinmit requires an argument integer number of legs");
       gleg_limit = strtoul(argv[arg_cursor], NULL, 0);
       whisper(11, "legs limited to %lu", gprbs_seed);
     }
