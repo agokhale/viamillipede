@@ -355,7 +355,7 @@ void txlaunchworkers(struct txconf_s *txconf) {
   while (worker_cursor < txconf->worker_count) {
     tx_state_set(&txconf->workers[worker_cursor], '-'); // unitialized
     txconf->workers[worker_cursor].txconf_parent =
-        txconf;                                    // allow inpection/inception
+        txconf;                                    // allow inspection/inception
     txconf->workers[worker_cursor].pkt.leg_id = 0; //
     txconf->workers[worker_cursor].pkt.size = -66; //
     txconf->workers[worker_cursor].sockfd = -66;   //
