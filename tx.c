@@ -306,7 +306,7 @@ void txworker_sm(struct txworker_s *txworker) {
     /* valid states:
     E: uninitialized
     f: faulted; unable to connect
-    a: preamble; we think we are talking to  a villipede server
+    a: preamble; we think we are talking to  a viamillipede server
     c: connecting; idle when connected; die if we are done or can't connect
     d: dispatched buffer is loaded; now send it
     Pp: pushing

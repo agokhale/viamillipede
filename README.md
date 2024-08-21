@@ -81,8 +81,8 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ Read stdin and push it over the network unless terminate is specified. 
 	+ Full duplex, rx and tx may be used concurrently to provide a transparent full duplex pipe. Happy shell throwing!
 		+ Two distinct port numbers are required, one rx port for each side, with the tx on the other host pointing at the rx
-		+ ```host1: ./vimaillipede rx  7788 tx host2 9900 charmode ```
-		+ ```host2: ./vimaillipede rx  9900 tx host1 7788 charmode ```
+		+ ```host1: ./viamillipede rx  7788 tx host2 9900 charmode ```
+		+ ```host2: ./viamillipede rx  9900 tx host1 7788 charmode ```
 	+ The source and destination machine may have multiple interfaces and may have:
 		+ varying layer1 media ( ethernet, serial, Infiniband , 1488, Carrier Pidgeon, insects, ntb)
 		+ varying layer2 attachment ( vlan, aggregation )
@@ -109,8 +109,8 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ Create a tcp socket
 	+ use with terminate to tunnel a full duplex socket, this example tunnels ssh from host1:9022 to host2:22
 ```
-		host1: ./vimaillipede rx  7788 tx host2 9900 charmode terminate 9022
-		host2: ./vimaillipede rx  9900 tx host1 7788 charmode initiate localhost 22
+		host1: ./viamillipede rx  7788 tx host2 9900 charmode terminate 9022
+		host2: ./viamillipede rx  9900 tx host1 7788 charmode initiate localhost 22
 ```
 
 + charmode

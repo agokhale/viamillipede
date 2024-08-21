@@ -10,10 +10,10 @@ void usage() {
   printf("loopback+stress:  viamillipede tx l27.0.0.1 12323 "
          "threads 3 verbose 3 rx 12323 "
          " leglimit 50 prbs 0x5aa5  delayus 50 \n");
-  printf("receiver:  vimillipede rx 12323 \n");
-  printf("prbs:  vimillipede prbs 0xfeed \n");
+  printf("receiver:  viamillipede rx 12323 \n");
+  printf("prbs:  viamillipede prbs 0xfeed \n");
 #ifdef CHAOS
-  printf("add repeatable  failures:  vimillipede rx 12323  chaos 180002 \n");
+  printf("add repeatable  failures:  viamillipede rx 12323  chaos 180002 \n");
 #endif
 }
 
