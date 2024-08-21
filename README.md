@@ -1,5 +1,5 @@
 ### viamillipede:
-Fast, resilient, network transparent pipe tranport. 
+Fast, resilient, network transparent pipe transport. 
 ![alt text](newetop.svg "parallelize traffic")
 
 Viamillipede is client/server program built to improve pipe transport across networks by using multiple TCP sessions. It demultiplexes stdin into multiple buffered TCP connections and then terminates the connections into stdout on another host. Order is guaranteed and the pipe is transparent to the source/sink programs. It is as simple to use as Netcat and can generate large throughputs.
@@ -198,7 +198,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 		+ millipedesh ? millipederpc?
 		+ specify rx/tx at the same time + fifo?
 		+ is this even a good idea? Exploit generator?
-		+ provide proxy trasport for other bulk movers: 
+		+ provide proxy transport for other bulk movers: 
 			+ rsync 
 			+ ssh 
 			+ OpenVPN
