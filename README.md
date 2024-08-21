@@ -19,7 +19,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
  + underused tx/rx interrupt endpoints, pcie lanes, NIC channel workers, memory lanes and flow control.
  + networks are tuned against hot single tcp connections; that is hard to fix
  + poor mss window scaling. Congestion controls aggressively collapse when network conditions are not pristine.
- + large bandwidth latency product vs. contended lans; both penalized due to 'impedence mismatches') 
+ + large bandwidth latency product vs. contended lans; both penalized due to 'impedance mismatches') 
  + Poor buffer interactions eg: "Shoe shining" delays. 
  + NewReno congestion control alternatives are not always practical.
  + Flows are stuck on one L1/L2/L3 path.  This defeats the benefits of aggregation and multi-homed connections.
