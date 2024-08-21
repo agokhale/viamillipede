@@ -44,7 +44,7 @@ int dispatch_idle_worker(struct txconf_s *txconf) {
     pthread_mutex_unlock(&(txconf->mutex));
     if (retcode < 0) {
       sleep_thief++;
-      // investigate backoffs that are smartr. probably not helpful
+      // investigate backoffs that are smarter. probably not helpful
       // sleep_thief <<= 1;
       // sleeping here indicates we do not have enough workers
       //   or enough througput on the network
