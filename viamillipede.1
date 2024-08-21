@@ -118,7 +118,7 @@ TCP connections are friable and IP is best effort to preserve its economy.  TCP 
 + provide ssh tcp forwarding endpoints
 	+ from the tx host:` ssh -N -L 12323:localhost:12323 tunneluser@rxhost `
 	+ use mutiple port instances to  get parallelism
-	* use a trusted peers tcp encapuslation tunnel to offload crypto
+	* use a trusted peers tcp encapsulation tunnel to offload crypto
 + use openssl in  stream, take your crypto into your own hands
 	+ ` /usr/bin/openssl enc -aes-128-cbc -k swordfIIIsh -S 5A  `
 	+ choose a cipher that's binary transparent  

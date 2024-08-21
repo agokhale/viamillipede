@@ -167,7 +167,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 + provide ssh tcp forwarding endpoints
 	+ from the tx host:` ssh -N -L 12323:localhost:12323 tunneluser@rxhost `
 	+ use mutiple port instances to  get parallelism
-	* use a trusted peers tcp encapuslation tunnel to offload crypto
+	* use a trusted peers tcp encapsulation tunnel to offload crypto
 + use viamillipede to armour ssh connections
 	+ not reccomended for poor performance
 	+ for the target ``` viamillipede charmode initiate localhost 22 tx txhost 4545 rx 5555 ```
