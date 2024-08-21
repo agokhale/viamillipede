@@ -143,7 +143,7 @@ void rxworker(struct rxworker_s *rxworker) {
 
       Heisenberg compensator theory of operation:
       next_leg will monotonically increment asserting that the output stream is
-      ordered by tracking it's assingment from the ingest code.
+      ordered by tracking it's assignment from the ingest code.
       */
 
       pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
