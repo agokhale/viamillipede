@@ -88,7 +88,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 		+ varying layer2 attachment ( vlan, aggregation )
 		+ varying layer3 routes ( multihomed transport, backup wan, NATed destination IP's) 
 	+ Provide tx multiple times to describe the transport graph.
-	+ Use the preferred link in the order it's provided in the tx claause. 
+	+ Use the preferred link in the order it's provided in the tx clause. 
 	+ Should you saturate  a link,  fill the next available link.
 	+ Provide tx the same number of times as the thread count to precisely distribute traffic on specific links
 ``` viamillipede \
