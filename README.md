@@ -35,7 +35,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
      + Resilience against dropped TCP connections and dead links.
 + Increase traffic throughput by:
 	+ Using parallel connections that each vie for survival against adverse network conditions.
-	+ Using multiple destination addresses with LACP/LAGG or separate Layer 2 adressing.
+	+ Using multiple destination addresses with LACP/LAGG or separate Layer 2 addressing.
 	+ Permit adequate buffering to prevent shoe shining. 
 	+ Return traffic is limited to ACK's to indicate correct operations
 + Specified Traffic Shaping:
