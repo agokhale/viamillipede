@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[arg_cursor], "threads") == 0) {
       ++arg_cursor;
-      assert(arg_cursor < argc && "threads needs <numeber> arguments");
+      assert(arg_cursor < argc && "threads needs <number> arguments");
       txconf.worker_count = atoi(argv[arg_cursor]);
       checkperror(" main nuisance: thread count parse ");
       assert(txconf.worker_count <= 16 &&
