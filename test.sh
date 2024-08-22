@@ -9,7 +9,7 @@ clean_running_viamillipede() {
 }
 catch_trap() {
         echo "caught trap pid $$  $* for $mytag -  cleaning up locks and dying"
-	clean_running_vimillipede
+	clean_running_viamillipede
 }
 trap catch_trap TERM INT KILL BUS FPE 
 
@@ -105,7 +105,7 @@ time_stop()  {
 
 zsend_shunt () {
 	#provide a reference for how fast the storage is, and what the pipe capability is
-	# actually we just wait on md5 mosttly
+	# actually we just wait on md5 mostly
 	time_start
 	$txrsh "zfs send $txpool/$txdataset@initial > /dev/null"
 	time_stop zsend_shunt
@@ -154,7 +154,7 @@ setup_common(){
 	txrsh="ssh $txhost "
 	rxrsh="ssh $rxhost "
 	setup_rxhostgraph
-	clean_running_vimillipede
+	clean_running_viamillipede
 	install_bin
 }
 

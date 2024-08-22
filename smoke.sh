@@ -1,14 +1,14 @@
 #!/bin/sh 
 #set -ex
 
-morinfo() {
+moreinfo() {
 	set -x
 	for ipid in $prisoners; do
 		echo more info from $ipid
 		kill -s USR1  $ipid
 	done
 }
-trap morinfo  INFO
+trap moreinfo  INFO
 
 start_epochtime=`date +"%s"`
 gpayloadgen="dd if=/dev/zero bs=1m count=1000 | openssl enc -aes-128-cbc -nosalt -k swordfiiish -iter 1"

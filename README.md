@@ -1,11 +1,11 @@
 ### viamillipede:
-Fast, resiliant, network transparent pipe tranport. 
+Fast, resilient, network transparent pipe transport. 
 ![alt text](newetop.svg "parallelize traffic")
 
-Viamillipede is client/server program built to improve pipe transport across networks by using multiple TCP sessions. It demultiplexes stdin into multiple buffered TCP connectons and then terminates the connections into stdout on another host. Order is guaranteed and the pipe is transparent to the source/sink programs. It is as simple to use as Netcat and can generate large throughputs.
+Viamillipede is client/server program built to improve pipe transport across networks by using multiple TCP sessions. It demultiplexes stdin into multiple buffered TCP connections and then terminates the connections into stdout on another host. Order is guaranteed and the pipe is transparent to the source/sink programs. It is as simple to use as Netcat and can generate large throughputs.
 
 #### Problems With existing approaches:
-TCP connections are fragile and IP employs best effort delivery to preserve its economy.  TCP was not engineered for performance, resiliance or longevity for a single flow.  Relying on a single TCP connection to succeed or perform is not defendable in software and there are many applications where losing a TCP session is expensive.
+TCP connections are fragile and IP employs best effort delivery to preserve its economy.  TCP was not engineered for performance, resilience or longevity for a single flow.  Relying on a single TCP connection to succeed or perform is not defendable in software and there are many applications where losing a TCP session is expensive.
 
 ### typical pathology:
 ![alt text](series_is_trouble.svg "serialized operations show resistance")
@@ -19,7 +19,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
  + underused tx/rx interrupt endpoints, pcie lanes, NIC channel workers, memory lanes and flow control.
  + networks are tuned against hot single tcp connections; that is hard to fix
  + poor mss window scaling. Congestion controls aggressively collapse when network conditions are not pristine.
- + large bandwidth latency product vs. contended lans; both penalized due to 'impedence mismatches') 
+ + large bandwidth latency product vs. contended lans; both penalized due to 'impedance mismatches') 
  + Poor buffer interactions eg: "Shoe shining" delays. 
  + NewReno congestion control alternatives are not always practical.
  + Flows are stuck on one L1/L2/L3 path.  This defeats the benefits of aggregation and multi-homed connections.
@@ -35,7 +35,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
      + Resilience against dropped TCP connections and dead links.
 + Increase traffic throughput by:
 	+ Using parallel connections that each vie for survival against adverse network conditions.
-	+ Using multiple destination addresses with LACP/LAGG or separate Layer 2 adressing.
+	+ Using multiple destination addresses with LACP/LAGG or separate Layer 2 addressing.
 	+ Permit adequate buffering to prevent shoe shining. 
 	+ Return traffic is limited to ACK's to indicate correct operations
 + Specified Traffic Shaping:
@@ -43,13 +43,13 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
      + Use multiple physical or logical IP transports.
      + Use aggregated link throughput in a user specified sorted order.
 
-+ Error resiliance: TCP sessions are delicate things
++ Error resilience: TCP sessions are delicate things
      + Restart broken TCP sessions on alternate transport automatically. 
      + Bypass dead links at startup; retry them later as other network topology changes are detected.
      + self tuning worker count, side chain, link choices and buffer sizes, Genetic optimization topic? `(*)`
      + checksums, not needed, but it's part of the test suite, use the 'checksums' transmitter flag to activate
      + error injection via tx chaos <seed> option - break the software in weird ways,  mostly for the test suite
-     + programmable checkphrase  uses a 4 character checkphrase to avoid confusion rather than provide strong authenticaion
+     + programmable checkphrase  uses a 4 character checkphrase to avoid confusion rather than provide strong authentication
 
 + Simple to use in pipe filter programs
      + Why hasn't someone done this before? 
@@ -73,22 +73,22 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 + ``` viamillipede rx 8834   | zfs recv trinity/destset ```
 	
 ### Options:
-+ `rx <portnum> ` Become a reciever. Write output to stdout unless initiate is specified.  
++ `rx <portnum> ` Become a receiver. Write output to stdout unless initiate is specified.  
 	+ If used concurrently with tx; full duplex connections are possible .
-	+ If used with initiate it will delay tcp socket startup untill there is data in the transport
-	+ if used with terminate it will delay reading untill the tunneled TCP connection is started
-+ `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host. Optionally provide tx muliple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources shold inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
+	+ If used with initiate it will delay tcp socket startup until there is data in the transport
+	+ if used with terminate it will delay reading until the tunneled TCP connection is started
++ `tx <host> <portnum> ` Become a transmitter and add transport graph link toward an rx host. Optionally provide tx multiple times to inform us about transport alternatives. We fill tcp queues on the first entries and then proceed down the list if there is more input than link throughput.  It can be helpful to provide multiple ip aliases to push work to different nic channel workers and balance traffic across LACP hash lanes. Analysis of the network resources should inform this graph. You may use multiple physical interfaces by chosing rx host ip's that force multiple routes.
 	+ Read stdin and push it over the network unless terminate is specified. 
 	+ Full duplex, rx and tx may be used concurrently to provide a transparent full duplex pipe. Happy shell throwing!
-		+ Two disinct port numbers are requied, one rx port for each side, with the tx on the other host pointing at the rx
-		+ ```host1: ./vimaillipede rx  7788 tx host2 9900 charmode ```
-		+ ```host2: ./vimaillipede rx  9900 tx host1 7788 charmode ```
+		+ Two distinct port numbers are required, one rx port for each side, with the tx on the other host pointing at the rx
+		+ ```host1: ./viamillipede rx  7788 tx host2 9900 charmode ```
+		+ ```host2: ./viamillipede rx  9900 tx host1 7788 charmode ```
 	+ The source and destination machine may have multiple interfaces and may have:
 		+ varying layer1 media ( ethernet, serial, Infiniband , 1488, Carrier Pidgeon, insects, ntb)
 		+ varying layer2 attachment ( vlan, aggregation )
 		+ varying layer3 routes ( multihomed transport, backup wan, NATed destination IP's) 
 	+ Provide tx multiple times to describe the transport graph.
-	+ Use the preferred link in the order it's provided in the tx claause. 
+	+ Use the preferred link in the order it's provided in the tx clause. 
 	+ Should you saturate  a link,  fill the next available link.
 	+ Provide tx the same number of times as the thread count to precisely distribute traffic on specific links
 ``` viamillipede \
@@ -109,8 +109,8 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ Create a tcp socket
 	+ use with terminate to tunnel a full duplex socket, this example tunnels ssh from host1:9022 to host2:22
 ```
-		host1: ./vimaillipede rx  7788 tx host2 9900 charmode terminate 9022
-		host2: ./vimaillipede rx  9900 tx host1 7788 charmode initiate localhost 22
+		host1: ./viamillipede rx  7788 tx host2 9900 charmode terminate 9022
+		host2: ./viamillipede rx  9900 tx host1 7788 charmode initiate localhost 22
 ```
 
 + charmode
@@ -125,10 +125,10 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ set only on transmitter
 	+ tune this value to suit your need
 	+ An upper limit of 16 is statically compiled in, higher thread count is unlikely to be productive. 
-	+ A minimum of 3 threads is encoraged to preserve performance and resiliancy. 
+	+ A minimum of 3 threads is encouraged to preserve performance and resiliency. 
 	+ ``` viamillipede tx foreign.shore.net 8834 threads 16 ```
 + checksum (only on transmitter). 
-	+ This is probably not required as the tcp stack and network layer will perform this autmatically
+	+ This is probably not required as the tcp stack and network layer will perform this automatically
 	+ part of the verification suite or for the paranoid user
 	+ uses a fast, not particularly stellar, method
 	+ transmitter only option.
@@ -139,9 +139,9 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ periodically close sockets to simulate real work network trouble  and tickle recovery code
 	+ deterministic for how many operations to allow before a failure
 	+ ``` viamillipede tx localhost 12334 chaos 1731```
-+ checkphrase <char[4]> provide lightweight guard agaist a stale or orphaned reciever,
++ checkphrase <char[4]> provide lightweight guard against a stale or orphaned receiver,
 	+ not a security/authentication mechanism
-	+ Transmitter and Reciever word[4] must match exactly.
+	+ Transmitter and Receiver word[4] must match exactly.
 	+ ``` viamillipede tx localhost 12334 checkphrase wat!```
 	+ ``` viamillipede rx 12334 checkphrase wat!```
 + prbs <seed[uint16]> generate and verify a pseudorandom bitstream to stress test the transport
@@ -154,8 +154,8 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ tx will generate the bitstream
 	+ rx will verify the bitstream and leave it on stdout
 + leglimit <long> stop after a number of legs
-	+ use to provide a bounded tranmission length
-	+ measureed in 2MiB chunks
+	+ use to provide a bounded transmission length
+	+ measured in 2MiB chunks
 + delayus <long> delay N  microseconds
 	+ cap throughput crudely
 	+ delay applied to every 2MiB   boundary
@@ -166,10 +166,10 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 + use ipsec/vpn and live with the speed
 + provide ssh tcp forwarding endpoints
 	+ from the tx host:` ssh -N -L 12323:localhost:12323 tunneluser@rxhost `
-	+ use mutiple port instances to  get parallelism
-	* use a trusted peers tcp encapuslation tunnel to offload crypto
+	+ use multiple port instances to  get parallelism
+	* use a trusted peers tcp encapsulation tunnel to offload crypto
 + use viamillipede to armour ssh connections
-	+ not reccomended for poor performance
+	+ not recommended for poor performance
 	+ for the target ``` viamillipede charmode initiate localhost 22 tx txhost 4545 rx 5555 ```
 	+ from the source ``` viamillipede charmode terminate 8022  tx rxhost 5555 rx 4545 ```
 	+ the use the alternate ssh port  on the source ``` ssh -p 8022 localhost ```
@@ -180,7 +180,7 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
 	+ appropriate  paranoia vs. performance up to you
 	+ enigma, rot39, morse?
 
-### Check the smoke.sh testscrip  for detailed examples of possible uses. 
+### Check the smoke.sh testscript  for detailed examples of possible uses. 
 
 ### Theory of operation
 ![alt text](theory_operation_viamillipede.svg "theory of operation")
@@ -194,11 +194,11 @@ TCP connections are fragile and IP employs best effort delivery to preserve its 
         	+ rot39, od
 	+ xdr/rpc marshalling for architecture independence
  		+ serializing a struct is not ideal
-	+ reverse channel capablity  *done 20180830
+	+ reverse channel capability  *done 20180830
 		+ millipedesh ? millipederpc?
 		+ specify rx/tx at the same time + fifo?
 		+ is this even a good idea? Exploit generator?
-		+ provide proxy trasport for other bulk movers: 
+		+ provide proxy transport for other bulk movers: 
 			+ rsync 
 			+ ssh 
 			+ OpenVPN

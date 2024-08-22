@@ -36,14 +36,14 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
   do {
     if (errno != 0) {
       whisper(3, "ignoring err %i\n", errno);
-      checkperror("bufferfill nuiscance err");
+      checkperror("bufferfill nuisance err");
       errno = 0;
     }
-    // reset nuiscances
+    // reset nuisances
     readsize = read(fd, dest_cursor, MIN(MAXBSIZE, remainder));
     if (errno != 0) {
       checkperror("bufferfill read err");
-      whisper(3, "erno: %i  readsize %ld requestedsiz: %d  fd:%i dest:%p \n",
+      whisper(3, "errno: %i  readsize %ld requestedsiz: %d  fd:%i dest:%p \n",
               errno, readsize, MIN(MAXBSIZE, remainder), fd, dest_cursor);
     }
     if (readsize < 0) {
@@ -57,7 +57,7 @@ ssize_t bufferfill(int fd, u_char *__restrict dest, size_t size, int charmode) {
       dest_cursor += readsize;
       if (readsize < MAXBSIZE && !charmode) {
         // discourage tinygrams - they just beat us up and chew the cpu
-        // XXX histgram the readsize and use ema to track optimal effort
+        // XXX histogram the readsize and use ema to track optimal effort
         sleep_thief++;
         usleep(sleep_thief);
       } else {
@@ -105,7 +105,7 @@ u_long stopwatch_stop(struct timespec *t) {
   u_long ret = (secondsdiff * 1000000) + (nanoes / 1000); // in usec
   return ret;
 }
-/*https://fossies.org/linux/iperf/src/tcp_info.chttps://fossies.org/linux/iperf/src/tcp_info.c*/
+/*https://fossies.org/linux/iperf/src/tcp_info.c*/
 #define W8(A) printf ("\t"#A":\t %d \n",(int)linfo.A);
 #define W32(A) printf ("\t"#A":\t %x \n",(unsigned int)linfo.A);
 void tcp_dumpinfo(int sfd )   {
@@ -177,7 +177,7 @@ int tcp_setbufsize( int si) {
 	int val= 1 * MEGA_BYTES;
 	socklen_t vsiz=sizeof(val);
 	setsockopt( si,SOL_SOCKET, SO_RCVBUF, &val, vsiz); //nice to have
-	setsockopt( si,SOL_SOCKET, SO_SNDBUF, &val, vsiz);  // absloutlely necessary or single host lo0 use will lock up viamillipede
+	setsockopt( si,SOL_SOCKET, SO_SNDBUF, &val, vsiz);  // absolutely necessary or single host lo0 use will lock up viamillipede
 	checkperror("nowait");
 	
 	tcp_geterr(si);
@@ -246,7 +246,7 @@ int tcp_connect(char *host, int port) {
   checkperror ( "tcp_connection ?? ");
   return (ret_sockfd);
 }
-int tcp_recieve_prep(struct sockaddr_in *sa, int *socknum, int inport) {
+int tcp_receive_prep(struct sockaddr_in *sa, int *socknum, int inport) {
   int one = 1;
   int retcode;
   int lsock = -1;

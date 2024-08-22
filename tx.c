@@ -8,7 +8,7 @@ extern u_long gdelay_us;
 
 void txshutdown(struct txconf_s *txconf, int worker, u_long leg);
 char tx_state(struct txworker_s *txworker) {
-  // wrap the state with a locking primatitve
+  // wrap the state with a locking primitive
   pthread_mutex_lock(&txworker->mutex);
   char ret_tmp = txworker->state;
   pthread_mutex_unlock(&txworker->mutex);
@@ -16,7 +16,7 @@ char tx_state(struct txworker_s *txworker) {
 }
 
 char tx_state_set(struct txworker_s *txworker, char instate) {
-  // wrap the state with a locking primatitve
+  // wrap the state with a locking primitive
   pthread_mutex_lock(&txworker->mutex);
   char ret_tmp = txworker->state = instate;
   pthread_mutex_unlock(&txworker->mutex);
@@ -44,10 +44,10 @@ int dispatch_idle_worker(struct txconf_s *txconf) {
     pthread_mutex_unlock(&(txconf->mutex));
     if (retcode < 0) {
       sleep_thief++;
-      // investigate backoffs that are smartr. probably not helpful
+      // investigate backoffs that are smarter. probably not helpful
       // sleep_thief <<= 1;
       // sleeping here indicates we do not have enough workers
-      //   or enough througput on the network
+      //   or enough throughput on the network
       usleep(sleep_thief);
       txconf->waits++;
     }
@@ -72,7 +72,7 @@ void txingest(struct txconf_s *txconf) {
   txconf->stream_total_bytes = 0;
   whisper(16, "tx:ingest started on fd:%d", txconf->input_fd);
   setvbuf( stdin, NULL, _IONBF, 0); 
-  checkperror("nuisancse ingest err");
+  checkperror("nuisance ingest err");
   pthread_mutex_lock(&(txconf->mutex));
   while (!txconf->done) {
     pthread_mutex_unlock(&(txconf->mutex));
@@ -181,10 +181,10 @@ int txpush(struct txworker_s *txworker) {
   return retcode;
 }
 int tx_tcp_connect_next(struct txconf_s *txconf) {
-  /** pick a port/host from the list, cycleing through  them
+  /** pick a port/host from the list, cycling through  them
   this will bias the two lowest target port entries are favored.
   If they are busy and more workers are available;use more target ports
-  monitorting txstatus() output will reveal the distribution
+  monitoring txstatus() output will reveal the distribution
   returns: a tcp connection attempt.
   */
   int chosen_target = txconf->target_port_cursor++;
@@ -238,7 +238,7 @@ int tx_start_net(struct txworker_s *txworker) {
     reconnect_fuse--;
   }
   if (reconnect_fuse == 0) {
-    // die, we were unable to work thorugh the list and get a grip
+    // die, we were unable to work through the list and get a grip
     tx_state_set(txworker, 'f');
     whisper(2, "txw:%02d reconnect fuse popped; giving up thread\n",
             txworker->id);
@@ -247,7 +247,7 @@ int tx_start_net(struct txworker_s *txworker) {
   /*
   starting sockets in parallel  can flood the remote end trivially on high bw
   networks resulting in
-  this syndrome and a partially connnected graph
+  this syndrome and a partially connected graph
   it looks like this on the remote side:
   sonewconn: pcb 0xfffff8014ba261a8: Listen queue overflow: 10 already in queue
   awaiting acceptance (2 occurrences)
@@ -305,8 +305,8 @@ void txworker_sm(struct txworker_s *txworker) {
     switch (local_state) {
     /* valid states:
     E: uninitialized
-    f: faulted; unble to connect
-    a: preamble; we think we are talking to  a villipede server
+    f: faulted; unable to connect
+    a: preamble; we think we are talking to  a viamillipede server
     c: connecting; idle when connected; die if we are done or can't connect
     d: dispatched buffer is loaded; now send it
     Pp: pushing
@@ -353,9 +353,9 @@ void txlaunchworkers(struct txconf_s *txconf) {
   int ret;
   checkperror("nuisance before launch");
   while (worker_cursor < txconf->worker_count) {
-    tx_state_set(&txconf->workers[worker_cursor], '-'); // unitialized
+    tx_state_set(&txconf->workers[worker_cursor], '-'); // uninitialized
     txconf->workers[worker_cursor].txconf_parent =
-        txconf;                                    // allow inpection/inception
+        txconf;                                    // allow inspection/inception
     txconf->workers[worker_cursor].pkt.leg_id = 0; //
     txconf->workers[worker_cursor].pkt.size = -66; //
     txconf->workers[worker_cursor].sockfd = -66;   //
@@ -374,7 +374,7 @@ void txlaunchworkers(struct txconf_s *txconf) {
     assert(ret == 0 && "pthread launch error");
     worker_cursor++;
     usleep(10 * 1000);
-    // 10ms standoff  to increase the likelyhood that PCBs are available on the
+    // 10ms standoff  to increase the likelihood that PCBs are available on the
     // rx side to answer requests
   }
   /*ret =
@@ -467,11 +467,11 @@ void tx(struct txconf_s *txconf) {
   checkperror("nuisance setting signal");
   pthread_mutex_init(&(txconf->mutex), NULL);
   pthread_mutex_lock(&(txconf->mutex));
-  checkperror("nuicance  locking txconf");
+  checkperror("nuisance  locking txconf");
   txconf->done = 0;
   txconf->input_eof = 0;
   pthread_mutex_unlock(&(txconf->mutex));
   init_workers(txconf);
-  checkperror("nuicance tx initializing workers");
+  checkperror("nuisance tx initializing workers");
   txlaunchworkers(txconf);
 }

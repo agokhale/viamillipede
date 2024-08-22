@@ -10,10 +10,10 @@ void usage() {
   printf("loopback+stress:  viamillipede tx l27.0.0.1 12323 "
          "threads 3 verbose 3 rx 12323 "
          " leglimit 50 prbs 0x5aa5  delayus 50 \n");
-  printf("receiver:  vimillipede rx 12323 \n");
-  printf("prbs:  vimillipede prbs 0xfeed \n");
+  printf("receiver:  viamillipede rx 12323 \n");
+  printf("prbs:  viamillipede prbs 0xfeed \n");
 #ifdef CHAOS
-  printf("add repeatable  failures:  vimillipede rx 12323  chaos 180002 \n");
+  printf("add repeatable  failures:  viamillipede rx 12323  chaos 180002 \n");
 #endif
 }
 
@@ -77,7 +77,7 @@ int main(int argc, char **argv) {
   ioconf.terminate_port = 0;
   ioconf.initiate_port = 0;
   errno = 0; // why, really why?!!!
-  checkperror(" main nuiscance: no possible reason, bad zoot! ");
+  checkperror(" main nuisance: no possible reason, bad zoot! ");
   while (arg_cursor < argc) {
     whisper(19, "  arg: %d, %s\n", arg_cursor, argv[arg_cursor]);
     checkperror("main arg proc");
@@ -93,15 +93,15 @@ int main(int argc, char **argv) {
       rxconf.port = (short)users_input_port;
       whisper(3, " being a server at port %i \n\n ", rxconf.port);
       mode |= MODE_RX;
-      checkperror(" main nuiscance: rx init error ");
+      checkperror(" main nuisance: rx init error ");
     }
     if (strcmp(argv[arg_cursor], "tx") == 0) {
       /* tx may be defined multiple times to achieve a balance across multiple L3 routes
        ei:  tx localhost 12323 tx tardis.co.ac.uk 12323 tx otherhost 123232
-       but they all must the same machine behind the ip addres set */
+       but they all must the same machine behind the ip address set */
       assert(++arg_cursor < argc && "tx needs <host> and <port> arguments");
       assert(strlen(argv[arg_cursor]) > 0 && "hostname seems fishy");
-      checkperror(" main nuiscance : hostname err");
+      checkperror(" main nuisance : hostname err");
       txconf.target_ports[txconf.target_port_count].name = argv[arg_cursor];
       arg_cursor++;
       assert(arg_cursor < argc &&
@@ -111,7 +111,7 @@ int main(int argc, char **argv) {
              "port number should be 0-USHRT_MAX");
       txconf.target_ports[txconf.target_port_count].port =
           (short)users_input_port;
-      checkperror(" main nuiscance:  port err2 ");
+      checkperror(" main nuisance:  port err2 ");
       whisper(2, "tx host: %s port:%i \n",
               txconf.target_ports[txconf.target_port_count].name,
               txconf.target_ports[txconf.target_port_count].port);
@@ -120,9 +120,9 @@ int main(int argc, char **argv) {
     }
     if (strcmp(argv[arg_cursor], "threads") == 0) {
       ++arg_cursor;
-      assert(arg_cursor < argc && "threads needs <numeber> arguments");
+      assert(arg_cursor < argc && "threads needs <number> arguments");
       txconf.worker_count = atoi(argv[arg_cursor]);
-      checkperror(" main nuiscance: thread count parse ");
+      checkperror(" main nuisance: thread count parse ");
       assert(txconf.worker_count <= 16 &&
              "it's unlikely that a large threadcount is beneficial");
     }
@@ -161,14 +161,14 @@ int main(int argc, char **argv) {
       whisper(11, "checkphrase set to %s", gcheckphrase);
     }
     // terminate 5656
-    // command setup listen for connecton at port
+    // command setup listen for connection at port
     if (strcmp(argv[arg_cursor], "terminate") == 0) {
       assert(++arg_cursor < argc && "terminate  needs  port ");
       ioconf.terminate_port = atoi(argv[arg_cursor]);
       whisper(11, "termport set to %d", ioconf.terminate_port);
     }
     // initiate hathor 5656
-    // command setup start connecton at port
+    // command setup start connection at port
     if (strcmp(argv[arg_cursor], "initiate") == 0) {
       arg_cursor++;
       assert(strlen(argv[arg_cursor]) > 0 && "hostname seems fishy");
@@ -185,7 +185,7 @@ int main(int argc, char **argv) {
       mode |= MODE_PRBS;
       arg_cursor++;
       assert ( arg_cursor < argc && 
-             "prbs requires an arguement eg: 0xa5a55a5a");
+             "prbs requires an argument eg: 0xa5a55a5a");
       gprbs_seed = strtoul(argv[arg_cursor], NULL, 0);
       whisper(11, "prbs mode seed %lu", gprbs_seed);
     }
@@ -193,25 +193,25 @@ int main(int argc, char **argv) {
       mode |= MODE_PRBS;
       arg_cursor++;
       assert ( arg_cursor < argc && 
-             "leglinmit requires an arguement integer number of legs");
+             "leglimit requires an argument integer number of legs");
       gleg_limit = strtoul(argv[arg_cursor], NULL, 0);
       whisper(11, "legs limited to %lu", gprbs_seed);
     }
     arg_cursor++;
   }
-  checkperror("main nuiscance: unspecified");
+  checkperror("main nuisance: unspecified");
   assert(!(ioconf.terminate_port > 0 && ioconf.initiate_port > 0) &&
-         "can't initiate and termimate in parallel");
+         "can't initiate and terminate in parallel");
   DTRACE_PROBE(viamillipede, init);
   if (mode & MODE_RX)
-    rx(&rxconf); // rx must preceed
+    rx(&rxconf); // rx must precede
   if (mode & MODE_TX)
     tx(&txconf);
   assert(
       terminate(&txconf, &rxconf, &ioconf) >=
-      0); // STDIN == 0 and is valid this should block , as workers are lauched
+      0); // STDIN == 0 and is valid this should block , as workers are launched
   // assert(initiate(&txconf, &rxconf, &ioconf) >= 1); // can't happen now must
-  // delay untill terminate happened On the remote
+  // delay until terminate happened On the remote
   // ingest must be delayed after initiate
   if ((mode & MODE_TX) && (ioconf.initiate_port == 0)) {
     initiate_relay();

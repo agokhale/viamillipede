@@ -1,6 +1,6 @@
 #!/bin/sh 
 set -x
-#testcase for the pathological loopback/ vey high rate lockup
+#testcase for the pathological loopback/ very high rate lockup
 
 foom() {
 	kill $txpid
@@ -8,10 +8,10 @@ foom() {
 }
 trap foom INT
 
-thrd=4
+thread=4
 ./viamillipede verbose 5 rx 12323 prbs 0x5aa5 > /dev/null     & 
 rxpid=$!
-./viamillipede tx localhost 12323 threads $thrd verbose 5  prbs 0x5aa5      &
+./viamillipede tx localhost 12323 threads $thread verbose 5  prbs 0x5aa5      &
 txpid=$!
 
 

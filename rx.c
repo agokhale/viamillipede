@@ -43,7 +43,7 @@ void rxworker(struct rxworker_s *rxworker) {
               rxworker->id, buffer[0], buffer[1], buffer[2], buffer[4]);
       exit(EDOM);
     }
-    checkperror("checkphrase  nuiscance ");
+    checkperror("checkphrase  nuisance ");
     if (write(rxworker->sockfd, okphrase, (size_t)2) != 2) {
       exit(ENOTCONN);
     }
@@ -119,7 +119,7 @@ void rxworker(struct rxworker_s *rxworker) {
                 ((remainder_counter++) % 16 == 0) ? (int)10 : (int)' ');
       }
       whisper(
-          10, "\nrxw:%02x leg:%lx buffer filled to :%x wating  on leg:%lx\n",
+          10, "\nrxw:%02x leg:%lx buffer filled to :%x waiting on leg:%lx\n",
           rxworker->id, pkt.leg_id, cursor, rxworker->rxconf_parent->next_leg);
 
       if (gprbs_seed > 0 && !restartme) {
@@ -143,7 +143,7 @@ void rxworker(struct rxworker_s *rxworker) {
 
       Heisenberg compensator theory of operation:
       next_leg will monotonically increment asserting that the output stream is
-      ordered by tracking it's assingment from the ingest code.
+      ordered by tracking it's assignment from the ingest code.
       */
 
       pthread_mutex_lock(&rxworker->rxconf_parent->rxmutex);
@@ -157,7 +157,7 @@ void rxworker(struct rxworker_s *rxworker) {
         }
         pthread_mutex_lock(
             &rxworker->rxconf_parent
-                 ->rxmutex); // do nothing but compare seqeuncer under lock
+                 ->rxmutex); // do nothing but compare sequencer under lock
       }
       pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
       if (!restartme) {
@@ -184,7 +184,7 @@ void rxworker(struct rxworker_s *rxworker) {
           rxworker->rxconf_parent->done_mbox = 1;
           pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
         } else if (pkt.opcode == feed_more) {
-          // the last frame will be empty and have a borken cksum
+          // the last frame will be empty and have a broken cksum
           if (pkt.checksum) {
             rx_checksum =
                 mix(grx_saved_checksum + pkt.leg_id, buffer, pkt.size);
@@ -221,9 +221,9 @@ void rxlaunchworkers(struct rxconf_s *rxconf) {
   int worker_cursor = 0;
   int retcode;
   rxconf->done_mbox = 0;
-  rxconf->next_leg = 0; // initalize sequencer
+  rxconf->next_leg = 0; // initialize sequencer
   setvbuf( stdout, NULL, _IONBF, 0);
-  if (tcp_recieve_prep(&(rxconf->sa), &(rxconf->socknum), rxconf->port) != 0) {
+  if (tcp_receive_prep(&(rxconf->sa), &(rxconf->socknum), rxconf->port) != 0) {
     whisper(1, "rx: tcp prep failed. this is unfortunate. ");
     exit(ENOTSOCK);
   }

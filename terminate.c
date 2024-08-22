@@ -1,11 +1,11 @@
 #include "worker.h"
-/* terminate and intiate allow viamillipede to talk to other sockets,
+/* terminate and initiate allow viamillipede to talk to other sockets,
    rather than the default stdin/stdout connection
-  TOP: Do nexcessary tcp plumbing, then overwrite the io fd's
+  TOP: Do necessary tcp plumbing, then overwrite the io fd's
 
                        /------\
 tcp >----> viamillipede--------viamillipede >---> tcp
-(client)   (terminate) \------/ (initaite)       (server)
+(client)   (terminate) \------/ (initiate)       (server)
                         (parallel
 			  tcp
 			sessions)
@@ -14,16 +14,16 @@ tcp >----> viamillipede--------viamillipede >---> tcp
 
 int terminate(struct txconf_s *txconf, struct rxconf_s *rxconf,
               struct ioconf_s *ioconf) {
-  /** terminate accepts a tcp connection and conects viamillipede 
+  /** terminate accepts a tcp connection and connects viamillipede 
     as a full duplex tcp to tcp multiplexor:
     nd fixes up the ioconf structure  for
-   ingest the tcp socket returns the file descripter chosen
+   ingest the tcp socket returns the file descriptor chosen
   returns: -6( incomplete) , 1(stdiout), 0(stdin==STDIN_FILENO)
   */
   int retc = -6;
   if (ioconf->terminate_port > 0) {
     struct sockaddr_in sa;
-    tcp_recieve_prep(&sa, &(ioconf->terminate_socket), ioconf->terminate_port);
+    tcp_receive_prep(&sa, &(ioconf->terminate_socket), ioconf->terminate_port);
     whisper(6, "term: accepting on %d", ioconf->terminate_port);
     txconf->input_fd =
         tcp_accept(&sa, ioconf->terminate_socket); // XX should we block?

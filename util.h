@@ -39,7 +39,7 @@ unsigned long mix(unsigned int seed, void *data, unsigned long size);
   do {                                                                         \
     if (errno != 0) {                                                          \
       perror(__VA_ARGS__);                                                     \
-      whisper(1,"checperror %s:%i",__FUNCTION__,__LINE__);                           \
+      whisper(1,"checkperror %s:%i",__FUNCTION__,__LINE__);                           \
     }                                                                          \
   } while (0);
 #endif
