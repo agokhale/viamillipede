@@ -387,8 +387,10 @@ void txlaunchworkers(struct txconf_s *txconf) {
 
 void txstatus(struct txconf_s *txconf, int log_level) {
   //whisper(log_level, "\nstate:leg-remainder(k)");
+  checkperror ( __FUNCTION__ );
   for (int i = 0; i < txconf->worker_count; i++) {
     int sfd =  txconf->workers[i].sockfd;
+    checkperror ( __FUNCTION__ );
     tcp_dump_sockfdparams( sfd );
     if ( gverbose > log_level ) { 
       tcp_dumpinfo( sfd);
@@ -399,6 +401,7 @@ void txstatus(struct txconf_s *txconf, int log_level) {
     if (i % 8 == 7) {
       whisper(log_level, "\n");
     }
+    checkperror ( __FUNCTION__ );
 
   }
   whisper(log_level, "\n");

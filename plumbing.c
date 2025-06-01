@@ -111,10 +111,11 @@ u_long stopwatch_stop(struct timespec *t) {
 void tcp_dumpinfo(int sfd )   {
   struct tcp_info linfo; 
   socklen_t infolen = sizeof ( linfo); 
+  checkperror(__FUNCTION__);
   getsockopt(sfd, IPPROTO_TCP, TCP_INFO, &linfo, &infolen);
-  checkperror("__FUNCTION__");
   whisper ( 6, "tcpinfo: fd %x \n",sfd);
   whisper ( 6, "  tcpi_snd_mss: %d \n",linfo.tcpi_snd_mss);
+  checkperror(__FUNCTION__);
   W8(tcpi_state)
   W8(__tcpi_ca_state)
   W8(__tcpi_retransmits)
