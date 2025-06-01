@@ -71,6 +71,7 @@ void txingest(struct txconf_s *txconf) {
   u_long ingest_leg_counter = 0;
   txconf->stream_total_bytes = 0;
   whisper(16, "tx:ingest started on fd:%d", txconf->input_fd);
+  setvbuf( stdin, NULL, _IONBF, 0); 
   checkperror("nuisancse ingest err");
   pthread_mutex_lock(&(txconf->mutex));
   while (!txconf->done) {
@@ -386,12 +387,12 @@ void txlaunchworkers(struct txconf_s *txconf) {
 }
 
 void txstatus(struct txconf_s *txconf, int log_level) {
-  //whisper(log_level, "\nstate:leg-remainder(k)");
+  whisper(log_level, "\nstate:leg-remainder(k)");
   checkperror ( __FUNCTION__ );
   for (int i = 0; i < txconf->worker_count; i++) {
     int sfd =  txconf->workers[i].sockfd;
     checkperror ( __FUNCTION__ );
-    tcp_dump_sockfdparams( sfd );
+    checkperror("tcp_dump_sockfdparams");
     if ( gverbose > log_level ) { 
       tcp_dumpinfo( sfd);
     }
@@ -411,7 +412,7 @@ int tx_poll(struct txconf_s *txconf) {
   // if there are launched/dispatched/pushing workers; hang here
   int done = 0;
   int busy_cycles = 0;
-  char instate = 'E'; // error uninitialized
+  ch
   while (!done) {
     usleep(1000); // e^n backoff?
     busy_cycles++;

@@ -1,8 +1,5 @@
 #include "worker.h"
 
-// use condvars
-#define kv 1
-
 extern char *gcheckphrase;
 extern unsigned long gprbs_seed;
 unsigned long grx_saved_checksum = 0xff;
@@ -16,9 +13,7 @@ void rxworker(struct rxworker_s *rxworker) {
   char checkphrase[] = "yoes";
   buffer = calloc(1, (size_t)kfootsize);
   rxworker->state='i';
-#ifdef kv
   assert(pthread_cond_init(&rxworker->rxconf_parent->seq_cv, NULL) == 0);
-#endif
 #ifdef FREEBSD
   setproctitle("rx %d", rxworker->id);
 #endif 
@@ -82,7 +77,8 @@ void rxworker(struct rxworker_s *rxworker) {
               rxworker->id, pkt.leg_id, pkt.size, pkt.opcode,  
               order_skew); // how > 15?
       if ( order_skew >  rxworker->rxconf_parent->workercount ) {
-        whisper ( 3, "rx: leg out of order; a lot ")
+        whisper ( 7, "rx: leg out of order skew:0x%x >  workers:0x%x ", 
+          order_skew, rxworker->rxconf_parent->workercount);
       } 
       int remainder = pkt.size;
       int remainder_counter = 0;
@@ -226,6 +222,7 @@ void rxlaunchworkers(struct rxconf_s *rxconf) {
   int retcode;
   rxconf->done_mbox = 0;
   rxconf->next_leg = 0; // initalize sequencer
+  setvbuf( stdout, NULL, _IONBF, 0);
   if (tcp_recieve_prep(&(rxconf->sa), &(rxconf->socknum), rxconf->port) != 0) {
     whisper(1, "rx: tcp prep failed. this is unfortunate. ");
     exit(ENOTSOCK);
