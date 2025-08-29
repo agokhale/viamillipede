@@ -412,7 +412,7 @@ int tx_poll(struct txconf_s *txconf) {
   // if there are launched/dispatched/pushing workers; hang here
   int done = 0;
   int busy_cycles = 0;
-  ch
+  char instate = 'E'; // error uninitialized
   while (!done) {
     usleep(1000); // e^n backoff?
     busy_cycles++;
