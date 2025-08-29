@@ -228,7 +228,6 @@ int tcp_connect(char *host, int port) {
   assert(ret_sockfd > 0 && "socket fishy");
   retcode = connect(ret_sockfd, (struct sockaddr *)&(lsockaddr),
                     sizeof(struct sockaddr));
-  checkperror ( "connect()");
   if (retcode != 0) {
     whisper(1, "tx: connect failed to %s:%d fd: %i \n", host, port, ret_sockfd);
     // our only output is the socketfd, so trash it
@@ -237,6 +236,7 @@ int tcp_connect(char *host, int port) {
     assert ( 0 == tcp_geterr(ret_sockfd));
     checkperror ( "geterr");
   }
+  checkperror ( "connect(e)");
   if (retcode != 0) {
     whisper(8, "        connected to %s:%i\n", host, port);
     tcp_nowait( ret_sockfd); 
