@@ -18,7 +18,7 @@ int chaos_fail() {
   }
   return (0);
 }
-#elseif
+#else
 #define chaos_fail err;
 #endif
 
