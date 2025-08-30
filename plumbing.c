@@ -252,6 +252,8 @@ int tcp_recieve_prep(struct sockaddr_in *sa, int *socknum, int inport) {
   int retcode;
   int lsock = -1;
   *socknum = socket(AF_INET, SOCK_STREAM, 0);
+  if (*socknum < 1 ) { assert (-0);}
+  checkperror ( "socket fail"); 
   sa->sin_family = AF_INET;
   sa->sin_addr.s_addr = htons(INADDR_ANY);
   sa->sin_port = htons(inport);
