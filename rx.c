@@ -155,9 +155,6 @@ void rxworker(struct rxworker_s *rxworker) {
           whisper(3, "kv error %i", kvret);
           assert(0);
         }
-        pthread_mutex_lock(
-            &rxworker->rxconf_parent
-                 ->rxmutex); // do nothing but compare seqeuncer under lock
       }
       pthread_mutex_unlock(&rxworker->rxconf_parent->rxmutex);
       if (!restartme) {
